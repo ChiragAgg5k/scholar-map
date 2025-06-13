@@ -1,4 +1,5 @@
 """Research Paper model"""
+
 from dataclasses import dataclass
 
 

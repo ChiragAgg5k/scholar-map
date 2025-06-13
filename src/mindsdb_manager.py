@@ -1,11 +1,13 @@
 """MindsDB Manager"""
+
 import os
 from typing import List
 import mindsdb_sdk
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.panel import Panel
 from dotenv import load_dotenv
-from models.paper import Paper
+from src.models.paper import Paper
 
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -32,17 +34,40 @@ class MindsDBManager:
     def connect(self):
         """Connect to MindsDB server"""
         try:
+            console.print("[dim]Attempting to connect to MindsDB server...[/dim]")
             self.server = mindsdb_sdk.connect(self.connection_url)
+
             if self.server.knowledge_bases.research_papers_kb:
                 self.research_papers_kb = self.server.knowledge_bases.research_papers_kb
                 console.print(
-                    "✅ Research papers knowledge base already exists!", style="green"
+                    "[bold green]Connection established successfully![/bold green]"
+                )
+                console.print(
+                    "[dim]Research papers knowledge base is ready for use.[/dim]"
                 )
             else:
+                console.print(
+                    "[bold green]Connection established successfully![/bold green]"
+                )
+                console.print(
+                    "[yellow]Setting up research papers knowledge base...[/yellow]"
+                )
                 self.create_research_papers_kb()
-            console.print("✅ Connected to MindsDB successfully!", style="green")
+
         except (ConnectionError, TimeoutError, ValueError, OSError) as e:
-            console.print(f"❌ Failed to connect to MindsDB: {str(e)}", style="red")
+            error_panel = Panel(
+                f"[bold red]Connection Failed[/bold red]\n\n"
+                f"Unable to connect to MindsDB server at {self.connection_url}\n\n"
+                f"[dim]Error details: {str(e)}[/dim]\n\n"
+                f"[yellow]Please ensure that:[/yellow]\n"
+                f"• MindsDB server is running\n"
+                f"• The connection URL is correct\n"
+                f"• Network connectivity is available",
+                title="Connection Error",
+                border_style="red",
+                padding=(1, 2),
+            )
+            console.print(error_panel)
             return False
 
     def create_research_papers_kb(self):
@@ -78,30 +103,47 @@ class MindsDBManager:
             self.server.query(kb_query)
             self.research_papers_kb = self.server.knowledge_bases.research_papers_kb
             console.print(
-                "✅ Created research papers knowledge base successfully!", style="green"
+                "[bold green]Knowledge base created successfully![/bold green]"
+            )
+            console.print(
+                "[dim]Research papers knowledge base is now ready for use.[/dim]"
             )
             return True
         except (ConnectionError, TimeoutError, ValueError, OSError) as e:
-            console.print(
-                f"❌ Failed to create research papers knowledge base: {str(e)}",
-                style="red",
+            error_panel = Panel(
+                f"[bold red]Knowledge Base Creation Failed[/bold red]\n\n"
+                f"Unable to create the research papers knowledge base.\n\n"
+                f"[dim]Error details: {str(e)}[/dim]\n\n"
+                f"[yellow]Please check:[/yellow]\n"
+                f"• OpenAI API key configuration\n"
+                f"• MindsDB server permissions\n"
+                f"• Network connectivity",
+                title="Setup Error",
+                border_style="red",
+                padding=(1, 2),
             )
+            console.print(error_panel)
             return False
 
     def insert_papers(self, papers: List[Paper]):
         """Insert papers into the knowledge base"""
         if not papers:
-            console.print("⚠️  No papers to insert", style="yellow")
+            console.print("[yellow]No papers provided for insertion.[/yellow]")
             return False
 
         try:
+            console.print(
+                f"[bold cyan]Preparing to insert {len(papers)} papers...[/bold cyan]"
+            )
+
             with Progress(
                 SpinnerColumn(),
                 TextColumn("[progress.description]{task.description}"),
                 console=console,
             ) as progress:
                 task = progress.add_task(
-                    "Inserting papers into knowledge base...", total=len(papers)
+                    "Processing and inserting papers into knowledge base...",
+                    total=len(papers),
                 )
 
                 for paper in papers:
@@ -126,11 +168,29 @@ class MindsDBManager:
                     self.server.query(insert_query)
                     progress.advance(task)
 
-            console.print(
-                f"✅ Successfully inserted {len(papers)} papers!", style="green"
+            success_panel = Panel(
+                f"[bold green]Papers Inserted Successfully[/bold green]\n\n"
+                f"Successfully processed and inserted {len(papers)} research papers into the knowledge base.\n\n"
+                f"[dim]The papers are now available for search and analysis.[/dim]",
+                title="Operation Complete",
+                border_style="green",
+                padding=(1, 2),
             )
+            console.print(success_panel)
             return True
 
         except (ConnectionError, TimeoutError, ValueError, OSError) as e:
-            console.print(f"❌ Failed to insert papers: {str(e)}", style="red")
+            error_panel = Panel(
+                f"[bold red]Paper Insertion Failed[/bold red]\n\n"
+                f"An error occurred while inserting papers into the knowledge base.\n\n"
+                f"[dim]Error details: {str(e)}[/dim]\n\n"
+                f"[yellow]Please verify:[/yellow]\n"
+                f"• Database connectivity\n"
+                f"• Paper data format\n"
+                f"• Knowledge base availability",
+                title="Insertion Error",
+                border_style="red",
+                padding=(1, 2),
+            )
+            console.print(error_panel)
             return False
