@@ -4,11 +4,12 @@ import uuid
 from datetime import datetime
 from rich.console import Console
 from rich.panel import Panel
-from rich.prompt import Prompt, IntPrompt, Confirm
+from rich.prompt import Prompt, IntPrompt, Confirm, FloatPrompt
 from rich.text import Text
 
 from src.mindsdb_manager import MindsDBManager
 from src.models.paper import Paper
+from src.sample_data_manager import insert_sample_papers
 
 
 def collect_paper_info(cli: Console) -> Paper:
@@ -233,6 +234,254 @@ def insert_papers_menu(db_manager: MindsDBManager, cli: Console):
         cli.print("\n[yellow]Returning to main menu (Ctrl+C pressed)[/yellow]")
 
 
+def search_papers_menu(db_manager: MindsDBManager, cli: Console):
+    """Handle the paper search menu and workflow"""
+    try:
+        while True:
+            cli.print()
+            search_menu_text = """[bold cyan]Paper Search Options:[/bold cyan]
+
+[bold white]1.[/bold white] General Search (Natural Language)
+[bold white]2.[/bold white] Search by Research Field
+[bold white]3.[/bold white] Search by Category
+[bold white]4.[/bold white] Search by Author
+[bold white]5.[/bold white] Advanced Search with Filters
+[bold white]6.[/bold white] Return to Main Menu"""
+
+            search_panel = Panel(
+                search_menu_text,
+                title="Search Papers",
+                border_style="magenta",
+                padding=(1, 2),
+            )
+            cli.print(search_panel)
+
+            choice = Prompt.ask(
+                "Please select a search option",
+                choices=["1", "2", "3", "4", "5", "6"],
+                default="6",
+            )
+
+            if choice == "1":
+                # General search
+                query = Prompt.ask("\n[bold]Enter your search query[/bold]")
+
+                # Optional relevance threshold
+                use_threshold = Confirm.ask(
+                    "Set minimum relevance threshold?", default=False
+                )
+                threshold = None
+                if use_threshold:
+                    threshold = FloatPrompt.ask(
+                        "Relevance threshold (0.0-1.0)", default=0.3
+                    )
+
+                # Optional result limit
+                limit = IntPrompt.ask("Maximum results to show", default=10)
+
+                cli.print(f"\n[dim]Searching for: '{query}'...[/dim]")
+                results = db_manager.search_papers(
+                    query, relevance_threshold=threshold, limit=limit
+                )
+                db_manager.display_search_results(results, query)
+
+            elif choice == "2":
+                # Search by research field
+                field_choices = [
+                    "Machine Learning",
+                    "Computer Vision",
+                    "Natural Language Processing",
+                    "Artificial Intelligence",
+                    "Data Science",
+                    "Other",
+                ]
+
+                field = Prompt.ask(
+                    "\n[bold]Select research field[/bold]", choices=field_choices
+                )
+                query = Prompt.ask("[bold]Enter search query for this field[/bold]")
+
+                use_threshold = Confirm.ask(
+                    "Set minimum relevance threshold?", default=False
+                )
+                threshold = None
+                if use_threshold:
+                    threshold = FloatPrompt.ask(
+                        "Relevance threshold (0.0-1.0)", default=0.3
+                    )
+
+                limit = IntPrompt.ask("Maximum results to show", default=10)
+
+                cli.print(f"\n[dim]Searching for '{query}' in {field}...[/dim]")
+                results = db_manager.search_by_research_field(
+                    query, field, threshold, limit
+                )
+                db_manager.display_search_results(results, f"{query} (Field: {field})")
+
+            elif choice == "3":
+                # Search by category
+                category_choices = [
+                    "cs.AI",
+                    "cs.LG",
+                    "cs.CV",
+                    "cs.CL",
+                    "cs.IR",
+                    "cs.NE",
+                    "physics",
+                    "math",
+                    "biology",
+                    "other",
+                ]
+
+                category = Prompt.ask(
+                    "\n[bold]Select category[/bold]", choices=category_choices
+                )
+                query = Prompt.ask("[bold]Enter search query for this category[/bold]")
+
+                use_threshold = Confirm.ask(
+                    "Set minimum relevance threshold?", default=False
+                )
+                threshold = None
+                if use_threshold:
+                    threshold = FloatPrompt.ask(
+                        "Relevance threshold (0.0-1.0)", default=0.3
+                    )
+
+                limit = IntPrompt.ask("Maximum results to show", default=10)
+
+                cli.print(
+                    f"\n[dim]Searching for '{query}' in category {category}...[/dim]"
+                )
+                results = db_manager.search_by_category(
+                    query, category, threshold, limit
+                )
+                db_manager.display_search_results(
+                    results, f"{query} (Category: {category})"
+                )
+
+            elif choice == "4":
+                # Search by author
+                author = Prompt.ask(
+                    "\n[bold]Enter author name (partial match supported)[/bold]"
+                )
+                query = Prompt.ask("[bold]Enter search query[/bold]")
+
+                use_threshold = Confirm.ask(
+                    "Set minimum relevance threshold?", default=False
+                )
+                threshold = None
+                if use_threshold:
+                    threshold = FloatPrompt.ask(
+                        "Relevance threshold (0.0-1.0)", default=0.3
+                    )
+
+                limit = IntPrompt.ask("Maximum results to show", default=10)
+
+                cli.print(
+                    f"\n[dim]Searching for '{query}' by author '{author}'...[/dim]"
+                )
+                results = db_manager.search_by_author(query, author, threshold, limit)
+                db_manager.display_search_results(
+                    results, f"{query} (Author: {author})"
+                )
+
+            elif choice == "5":
+                # Advanced search with multiple filters
+                query = Prompt.ask("\n[bold]Enter your search query[/bold]")
+
+                cli.print("\n[bold cyan]Optional Filters:[/bold cyan]")
+                cli.print("[dim]Press Enter to skip any filter[/dim]")
+
+                filters = {}
+
+                # Research field filter
+                research_field = Prompt.ask(
+                    "Research field",
+                    choices=[
+                        "Machine Learning",
+                        "Computer Vision",
+                        "Natural Language Processing",
+                        "Artificial Intelligence",
+                        "Data Science",
+                        "Other",
+                        "",
+                    ],
+                    default="",
+                )
+                if research_field:
+                    filters["research_field"] = research_field
+
+                # Category filter
+                category = Prompt.ask(
+                    "Category",
+                    choices=[
+                        "cs.AI",
+                        "cs.LG",
+                        "cs.CV",
+                        "cs.CL",
+                        "cs.IR",
+                        "cs.NE",
+                        "physics",
+                        "math",
+                        "biology",
+                        "other",
+                        "",
+                    ],
+                    default="",
+                )
+                if category:
+                    filters["category"] = category
+
+                # Paper type filter
+                paper_type = Prompt.ask(
+                    "Paper type",
+                    choices=[
+                        "Research Paper",
+                        "Review Paper",
+                        "Conference Paper",
+                        "Journal Article",
+                        "Preprint",
+                        "Other",
+                        "",
+                    ],
+                    default="",
+                )
+                if paper_type:
+                    filters["paper_type"] = paper_type
+
+                # Minimum citation count
+                min_citations = Prompt.ask(
+                    "Minimum citation count (press Enter to skip)", default=""
+                )
+                if min_citations.isdigit():
+                    filters["citation_count"] = int(min_citations)
+
+                # Relevance threshold
+                use_threshold = Confirm.ask(
+                    "Set minimum relevance threshold?", default=False
+                )
+                threshold = None
+                if use_threshold:
+                    threshold = FloatPrompt.ask(
+                        "Relevance threshold (0.0-1.0)", default=0.3
+                    )
+
+                limit = IntPrompt.ask("Maximum results to show", default=10)
+
+                cli.print(f"\n[dim]Performing advanced search for: '{query}'...[/dim]")
+                if filters:
+                    cli.print(f"[dim]Filters: {filters}[/dim]")
+
+                results = db_manager.search_papers(query, threshold, limit, **filters)
+                db_manager.display_search_results(results, f"{query} (Advanced)")
+
+            elif choice == "6":
+                break
+
+    except KeyboardInterrupt:
+        cli.print("\n[yellow]Returning to main menu (Ctrl+C pressed)[/yellow]")
+
+
 if __name__ == "__main__":
     manager = MindsDBManager()
     console = Console()
@@ -256,7 +505,9 @@ if __name__ == "__main__":
             menu_text = """[bold cyan]Available Options:[/bold cyan]
 
 [bold white]1.[/bold white] Insert Research Papers
-[bold white]2.[/bold white] Exit Application"""
+[bold white]2.[/bold white] Insert Sample Papers
+[bold white]3.[/bold white] Search Research Papers
+[bold white]4.[/bold white] Exit Application"""
 
             menu_panel = Panel(
                 menu_text, title="Main Menu", border_style="cyan", padding=(1, 2)
@@ -264,12 +515,24 @@ if __name__ == "__main__":
             console.print(menu_panel)
 
             choice = Prompt.ask(
-                "Please select an option", choices=["1", "2"], default="2"
+                "Please select an option", choices=["1", "2", "3", "4"], default="4"
             )
 
             if choice == "1":
                 insert_papers_menu(manager, console)
             elif choice == "2":
+                console.print()
+                try:
+                    insert_sample_papers(manager)
+                except KeyboardInterrupt:
+                    console.print(
+                        "\n[yellow]Sample data insertion cancelled (Ctrl+C)[/yellow]"
+                    )
+                except Exception as e:
+                    console.print(f"\n[red]Error inserting sample data: {str(e)}[/red]")
+            elif choice == "3":
+                search_papers_menu(manager, console)
+            elif choice == "4":
                 console.print()
                 console.print(
                     "[bold green]Thank you for using Scholar Map![/bold green]"

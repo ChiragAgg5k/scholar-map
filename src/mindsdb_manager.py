@@ -1,11 +1,12 @@
 """MindsDB Manager"""
 
 import os
-from typing import List
+from typing import List, Optional, Dict, Any, Union
 import mindsdb_sdk
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.panel import Panel
+from rich.table import Table
 from dotenv import load_dotenv
 from src.models.paper import Paper
 
@@ -100,7 +101,9 @@ class MindsDBManager:
                 content_columns = ['abstract', 'full_text'],
                 id_column = 'paper_id';
             """
-            self.server.query(kb_query)
+            project = self.server.projects.mindsdb
+            query = project.query(kb_query)
+            query.fetch()
             self.research_papers_kb = self.server.knowledge_bases.research_papers_kb
             console.print(
                 "[bold green]Knowledge base created successfully![/bold green]"
@@ -194,3 +197,200 @@ class MindsDBManager:
             )
             console.print(error_panel)
             return False
+
+    def search_papers(
+        self,
+        query: str,
+        relevance_threshold: Optional[float] = None,
+        limit: int = 10,
+        **filters,
+    ) -> List[Dict[str, Any]]:
+        """
+        Perform semantic search on research papers using natural language query.
+
+        Args:
+            query: Natural language search query
+            relevance_threshold: Minimum relevance score (0.0 to 1.0)
+            limit: Maximum number of results to return
+            **filters: Additional metadata filters (research_field, category, paper_type, etc.)
+
+        Returns:
+            List of search results with metadata and relevance scores
+        """
+        try:
+            # Build the WHERE clause
+            escaped_query = query.replace("'", "''")
+            where_conditions = [f"content = '{escaped_query}' "]
+
+            if relevance_threshold is not None:
+                where_conditions.append(f"relevance >= {relevance_threshold}")
+
+            # Add metadata filters
+            for key, value in filters.items():
+                if key in [
+                    "title",
+                    "authors",
+                    "category",
+                    "research_field",
+                    "paper_type",
+                    "journal",
+                ]:
+                    escaped_value = str(value).replace("'", "''")
+                    where_conditions.append(f"{key} = '{escaped_value}'")
+                elif key == "citation_count":
+                    where_conditions.append(f"citation_count >= {value}")
+
+            where_clause = " AND ".join(where_conditions)
+
+            search_query = f"""
+            SELECT * 
+            FROM research_papers_kb 
+            WHERE {where_clause}
+            ORDER BY relevance DESC
+            LIMIT {limit}
+            """
+
+            result = self.server.query(search_query)
+            return result.fetch()
+
+        except Exception as e:
+            console.print(f"[red]Search error: {str(e)}[/red]")
+            return []
+
+    def search_by_research_field(
+        self,
+        query: str,
+        field: str,
+        relevance_threshold: Optional[float] = None,
+        limit: int = 10,
+    ) -> List[Dict[str, Any]]:
+        """Search papers by specific research field"""
+        return self.search_papers(
+            query=query,
+            relevance_threshold=relevance_threshold,
+            limit=limit,
+            research_field=field,
+        )
+
+    def search_by_category(
+        self,
+        query: str,
+        category: str,
+        relevance_threshold: Optional[float] = None,
+        limit: int = 10,
+    ) -> List[Dict[str, Any]]:
+        """Search papers by category"""
+        return self.search_papers(
+            query=query,
+            relevance_threshold=relevance_threshold,
+            limit=limit,
+            category=category,
+        )
+
+    def search_by_author(
+        self,
+        query: str,
+        author: str,
+        relevance_threshold: Optional[float] = None,
+        limit: int = 10,
+    ) -> List[Dict[str, Any]]:
+        """Search papers by author (partial match supported)"""
+        try:
+            escaped_query = query.replace("'", "''")
+            escaped_author = author.replace("'", "''")
+            where_conditions = [
+                f"content = '{escaped_query}' ",
+                f"authors LIKE '%{escaped_author}%'",
+            ]
+
+            if relevance_threshold is not None:
+                where_conditions.append(f"relevance >= {relevance_threshold}")
+
+            where_clause = " AND ".join(where_conditions)
+
+            search_query = f"""
+            SELECT * 
+            FROM research_papers_kb 
+            WHERE {where_clause}
+            ORDER BY relevance DESC
+            LIMIT {limit}
+            """
+
+            result = self.server.query(search_query)
+            return result.fetch()
+
+        except Exception as e:
+            console.print(f"[red]Author search error: {str(e)}[/red]")
+            return []
+
+    def display_search_results(self, results: Union[List[Dict[str, Any]], Any], query: str):
+        """Display search results in a formatted table"""
+        # Handle both DataFrame and list results
+        if hasattr(results, 'empty'):
+            # It's a DataFrame
+            if results.empty:
+                console.print(f"[yellow]No results found for query: '{query}'[/yellow]")
+                return
+            # Convert DataFrame to list of dicts for processing
+            results = results.to_dict('records')
+        elif not results:
+            # It's a list or other iterable
+            console.print(f"[yellow]No results found for query: '{query}'[/yellow]")
+            return
+
+        console.print(f"\n[bold cyan]Search Results for: '{query}'[/bold cyan]")
+        console.print(f"[dim]Found {len(results)} matching papers[/dim]\n")
+
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("Relevance", style="green", width=10)
+        table.add_column("Title", style="white", width=40)
+        table.add_column("Authors", style="cyan", width=25)
+        table.add_column("Field", style="yellow", width=20)
+        table.add_column("Category", style="blue", width=10)
+
+        for result in results:
+            metadata = result.get("metadata", {})
+            if isinstance(metadata, str):
+                import json
+
+                try:
+                    metadata = json.loads(metadata)
+                except:
+                    metadata = {}
+
+            relevance = result.get("relevance", 0)
+            title = metadata.get("title", "N/A")
+            authors = metadata.get("authors", "N/A")
+            research_field = metadata.get("research_field", "N/A")
+            category = metadata.get("category", "N/A")
+
+            # Truncate long text for table display
+            title = (title[:37] + "...") if len(title) > 40 else title
+            authors = (authors[:22] + "...") if len(authors) > 25 else authors
+            research_field = (
+                (research_field[:17] + "...")
+                if len(research_field) > 20
+                else research_field
+            )
+
+            table.add_row(f"{relevance:.3f}", title, authors, research_field, category)
+
+        console.print(table)
+
+    def get_paper_details(self, paper_id: str) -> Optional[Dict[str, Any]]:
+        """Get detailed information about a specific paper"""
+        try:
+            detail_query = f"""
+            SELECT *
+            FROM research_papers_kb
+            WHERE paper_id = '{paper_id}'
+            """
+
+            result = self.server.query(detail_query)
+            results = result.fetch()
+
+            return results[0] if results else None
+
+        except Exception as e:
+            console.print(f"[red]Error fetching paper details: {str(e)}[/red]")
+            return None
