@@ -1,10 +1,11 @@
 [project]
 name = "scholar-map"
 version = "0.1.0"
-description = "Add your description here"
+description = "AI-Powered Research Assistant using MindsDB Knowledge Bases"
 readme = "README.md"
 requires-python = ">=3.11.4"
 dependencies = [
+    "faker>=37.4.0",
     "mindsdb-sdk>=3.4.3",
     "python-dotenv>=1.1.0",
     "rich>=14.0.0",

@@ -30,7 +30,7 @@ ScholarMind is a command-line interface that transforms how researchers discover
 
 ## Usage
 
-To start off, you can insert some sample papers by using the `d` or `demo` command. It will include some sample papers like:
+- To start off, you can insert some sample papers by using the `d` or `demo` command. It will include some sample papers like:
 
 ```bash
 ╭─────────────────────────────────────────────────────────────────────────────────── Sample Paper 1 ───────────────────────────────────────────────────────────────────────────────────╮
@@ -45,7 +45,7 @@ To start off, you can insert some sample papers by using the `d` or `demo` comma
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
-After addition, it should look like this:
+- After addition, it should look like this:
 
 ```bash
 ╭───────────────────────────────────────────────────────────────────────────────── Operation Complete ─────────────────────────────────────────────────────────────────────────────────╮
@@ -64,7 +64,7 @@ After addition, it should look like this:
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
-You can query in natural language using the `adv` search option. It will show a table of results like this:
+- You can query in natural language using the `adv` search option. It will show a table of results like this:
 
 ```bash
 ┏━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┓
