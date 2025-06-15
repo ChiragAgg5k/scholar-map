@@ -6,321 +6,105 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt, IntPrompt, Confirm, FloatPrompt
 from rich.text import Text
+from rich.live import Live
+from rich.layout import Layout
+from rich.align import Align
 
 from src.mindsdb_manager import MindsDBManager
 from src.models.paper import Paper
 from src.sample_data_manager import insert_sample_papers
 
 
-def collect_paper_info(cli: Console) -> Paper:
-    """Collect paper information from user input"""
-    cli.print("[bold cyan]Enter Paper Information[/bold cyan]")
-    cli.print("[dim]Please provide the following details for the research paper:[/dim]")
-    cli.print()
+class ScholarMapCLI:
+    """Enhanced CLI interface for Scholar Map"""
 
-    # Generate unique paper ID
-    paper_id = str(uuid.uuid4())
+    def __init__(self):
+        self.console = Console()
+        self.manager = MindsDBManager()
+        self.current_context = "main"
+        self.papers_to_insert = []
 
-    # Collect required information
-    title = Prompt.ask("[bold]Paper Title[/bold]")
-    authors = Prompt.ask("[bold]Authors[/bold] [dim](comma-separated)[/dim]")
-    category = Prompt.ask(
-        "[bold]Category[/bold]",
-        choices=[
-            "cs.AI",
-            "cs.LG",
-            "cs.CV",
-            "cs.CL",
-            "cs.IR",
-            "cs.NE",
-            "physics",
-            "math",
-            "biology",
-            "other",
-        ],
-        default="other",
-    )
+    def clear_screen(self):
+        """Clear the terminal screen"""
+        self.console.clear()
 
-    # Date input with validation
-    while True:
-        pub_date_str = Prompt.ask(
-            "[bold]Publication Date[/bold] [dim](YYYY-MM-DD)[/dim]",
-            default=datetime.now().strftime("%Y-%m-%d"),
+    def show_header(self):
+        """Display the application header"""
+        welcome_text = Text("Scholar Map", style="bold blue")
+        welcome_panel = Panel(
+            welcome_text,
+            subtitle="Research Paper Knowledge Management System",
+            border_style="blue",
+            padding=(0, 2),
         )
-        try:
-            datetime.strptime(pub_date_str, "%Y-%m-%d")
-            break
-        except ValueError:
-            cli.print("[red]Invalid date format. Please use YYYY-MM-DD format.[/red]")
+        self.console.print(welcome_panel)
 
-    arxiv_id = Prompt.ask("[bold]ArXiv ID[/bold] [dim](optional)[/dim]", default="")
-    journal = Prompt.ask(
-        "[bold]Journal/Conference[/bold] [dim](optional)[/dim]", default=""
-    )
-    research_field = Prompt.ask(
-        "[bold]Research Field[/bold]",
-        choices=[
-            "Machine Learning",
-            "Computer Vision",
-            "Natural Language Processing",
-            "Artificial Intelligence",
-            "Data Science",
-            "Other",
-        ],
-        default="Other",
-    )
-    paper_type = Prompt.ask(
-        "[bold]Paper Type[/bold]",
-        choices=[
-            "Research Paper",
-            "Review Paper",
-            "Conference Paper",
-            "Journal Article",
-            "Preprint",
-            "Other",
-        ],
-        default="Research Paper",
-    )
+    def show_status(self, message: str, style: str = "dim"):
+        """Show a status message"""
+        self.console.print(f"[{style}]{message}[/{style}]")
 
-    citation_count = IntPrompt.ask(
-        "[bold]Citation Count[/bold] [dim](optional)[/dim]", default=0
-    )
-
-    cli.print(
-        "\n[bold]Abstract[/bold] [dim](Enter the abstract, press Enter twice when done)[/dim]"
-    )
-    abstract_lines = []
-    while True:
-        line = input()
-        if line.strip() == "":
-            if abstract_lines and abstract_lines[-1].strip() == "":
-                break
-            abstract_lines.append(line)
+    def get_quick_action(self, context: str = "main") -> str:
+        """Get next action from user with minimal interface"""
+        if context == "main":
+            self.console.print("\n[bold cyan]Quick Actions:[/bold cyan]")
+            prompt_text = "[bold]Action[/bold] ([dim]i[/dim]nsert, [dim]s[/dim]earch, [dim]d[/dim]emo, [dim]q[/dim]uit)"
+            choices = ["i", "insert", "s", "search", "d", "demo", "q", "quit"]
+        elif context == "insert":
+            if self.papers_to_insert:
+                self.console.print(
+                    f"\n[dim]📄 {len(self.papers_to_insert)} papers ready to insert[/dim]"
+                )
+            prompt_text = "[bold]Action[/bold] ([dim]a[/dim]dd, [dim]r[/dim]eview, [dim]i[/dim]nsert, [dim]c[/dim]lear, [dim]b[/dim]ack)"
+            choices = [
+                "a",
+                "add",
+                "r",
+                "review",
+                "i",
+                "insert",
+                "c",
+                "clear",
+                "b",
+                "back",
+            ]
+        elif context == "search":
+            prompt_text = "[bold]Search[/bold] ([dim]g[/dim]eneral, [dim]f[/dim]ield, [dim]c[/dim]ategory, [dim]a[/dim]uthor, [dim]adv[/dim]anced, [dim]b[/dim]ack)"
+            choices = [
+                "g",
+                "general",
+                "f",
+                "field",
+                "c",
+                "category",
+                "a",
+                "author",
+                "adv",
+                "advanced",
+                "b",
+                "back",
+            ]
         else:
-            abstract_lines.append(line)
+            choices = ["b", "back"]
+            prompt_text = "[bold]Action[/bold] ([dim]b[/dim]ack)"
 
-    abstract = "\n".join(abstract_lines).strip()
+        return Prompt.ask(prompt_text, choices=choices, default="b")
 
-    return Paper(
-        paper_id=paper_id,
-        title=title,
-        authors=authors,
-        category=category,
-        pub_date=pub_date_str,
-        arxiv_id=arxiv_id,
-        journal=journal,
-        research_field=research_field,
-        paper_type=paper_type,
-        citation_count=citation_count,
-        abstract=abstract,
-    )
+    def collect_paper_info(self) -> Paper:
+        """Collect paper information from user input with improved UX"""
+        self.console.print("\n[bold cyan]📝 New Paper Entry[/bold cyan]")
+        self.console.print("[dim]Fill in the details (press Ctrl+C to cancel)[/dim]\n")
 
+        # Generate unique paper ID
+        paper_id = str(uuid.uuid4())
 
-def insert_papers_menu(db_manager: MindsDBManager, cli: Console):
-    """Handle the paper insertion menu and workflow"""
-    papers_to_insert = []
+        try:
+            # Collect required information with streamlined prompts
+            title = Prompt.ask("📖 [bold]Title[/bold]")
+            authors = Prompt.ask("👥 [bold]Authors[/bold] [dim](comma-separated)[/dim]")
 
-    try:
-        while True:
-            cli.print()
-            insert_menu_text = """[bold cyan]Paper Insertion Options:[/bold cyan]
-
-[bold white]1.[/bold white] Add New Paper
-[bold white]2.[/bold white] Review Papers to Insert ([bold cyan]{count}[/bold cyan] papers)
-[bold white]3.[/bold white] Insert All Papers into Knowledge Base
-[bold white]4.[/bold white] Clear All Papers
-[bold white]5.[/bold white] Return to Main Menu""".format(
-                count=len(papers_to_insert)
-            )
-
-            insert_panel = Panel(
-                insert_menu_text,
-                title="Paper Insertion",
-                border_style="cyan",
-                padding=(1, 2),
-            )
-            cli.print(insert_panel)
-
-            choice = Prompt.ask(
-                "Please select an option",
-                choices=["1", "2", "3", "4", "5"],
-                default="5",
-            )
-
-            if choice == "1":
-                cli.print()
-                try:
-                    paper = collect_paper_info(cli)
-                    papers_to_insert.append(paper)
-                    cli.print(
-                        f"[bold green]✓[/bold green] Paper '[bold]{paper.title}[/bold]' added successfully!"
-                    )
-
-                    if Confirm.ask(
-                        "\nWould you like to add another paper?", default=True
-                    ):
-                        continue
-
-                except KeyboardInterrupt:
-                    cli.print("\n[yellow]Paper addition cancelled.[/yellow]")
-                except Exception as e:
-                    cli.print(f"[red]Error adding paper: {str(e)}[/red]")
-
-            elif choice == "2":
-                if not papers_to_insert:
-                    cli.print(
-                        "[yellow]No papers to review. Please add papers first.[/yellow]"
-                    )
-                    continue
-
-                cli.print(
-                    f"\n[bold cyan]Review Papers ({len(papers_to_insert)} papers):[/bold cyan]"
-                )
-                for i, paper in enumerate(papers_to_insert, 1):
-                    review_panel = Panel(
-                        f"[bold]Title:[/bold] {paper.title}\n"
-                        f"[bold]Authors:[/bold] {paper.authors}\n"
-                        f"[bold]Category:[/bold] {paper.category}\n"
-                        f"[bold]Research Field:[/bold] {paper.research_field}\n"
-                        f"[bold]Publication Date:[/bold] {paper.pub_date}\n"
-                        f"[bold]Abstract:[/bold] {paper.abstract[:200]}{'...' if len(paper.abstract) > 200 else ''}",
-                        title=f"Paper {i}",
-                        border_style="blue",
-                        padding=(1, 2),
-                    )
-                    cli.print(review_panel)
-
-            elif choice == "3":
-                if not papers_to_insert:
-                    cli.print(
-                        "[yellow]No papers to insert. Please add papers first.[/yellow]"
-                    )
-                    continue
-
-                cli.print(
-                    f"\n[bold yellow]Ready to insert {len(papers_to_insert)} papers into the knowledge base.[/bold yellow]"
-                )
-                if Confirm.ask(
-                    "Do you want to proceed with the insertion?", default=True
-                ):
-                    success = db_manager.insert_papers(papers_to_insert)
-                    if success:
-                        papers_to_insert.clear()
-                        cli.print(
-                            "[bold green]All papers have been successfully inserted![/bold green]"
-                        )
-                    else:
-                        cli.print(
-                            "[red]Some papers failed to insert. Please check the error messages above.[/red]"
-                        )
-
-            elif choice == "4":
-                if papers_to_insert and Confirm.ask(
-                    f"Are you sure you want to clear all {len(papers_to_insert)} papers?",
-                    default=False,
-                ):
-                    papers_to_insert.clear()
-                    cli.print("[yellow]All papers cleared.[/yellow]")
-
-            elif choice == "5":
-                if papers_to_insert:
-                    if not Confirm.ask(
-                        f"You have {len(papers_to_insert)} papers that haven't been inserted. Are you sure you want to return to the main menu?",
-                        default=False,
-                    ):
-                        continue
-                break
-    except KeyboardInterrupt:
-        cli.print("\n[yellow]Returning to main menu (Ctrl+C pressed)[/yellow]")
-
-
-def search_papers_menu(db_manager: MindsDBManager, cli: Console):
-    """Handle the paper search menu and workflow"""
-    try:
-        while True:
-            cli.print()
-            search_menu_text = """[bold cyan]Paper Search Options:[/bold cyan]
-
-[bold white]1.[/bold white] General Search (Natural Language)
-[bold white]2.[/bold white] Search by Research Field
-[bold white]3.[/bold white] Search by Category
-[bold white]4.[/bold white] Search by Author
-[bold white]5.[/bold white] Advanced Search with Filters
-[bold white]6.[/bold white] Return to Main Menu"""
-
-            search_panel = Panel(
-                search_menu_text,
-                title="Search Papers",
-                border_style="magenta",
-                padding=(1, 2),
-            )
-            cli.print(search_panel)
-
-            choice = Prompt.ask(
-                "Please select a search option",
-                choices=["1", "2", "3", "4", "5", "6"],
-                default="6",
-            )
-
-            if choice == "1":
-                # General search
-                query = Prompt.ask("\n[bold]Enter your search query[/bold]")
-
-                # Optional relevance threshold
-                use_threshold = Confirm.ask(
-                    "Set minimum relevance threshold?", default=False
-                )
-                threshold = None
-                if use_threshold:
-                    threshold = FloatPrompt.ask(
-                        "Relevance threshold (0.0-1.0)", default=0.3
-                    )
-
-                # Optional result limit
-                limit = IntPrompt.ask("Maximum results to show", default=10)
-
-                cli.print(f"\n[dim]Searching for: '{query}'...[/dim]")
-                results = db_manager.search_papers(
-                    query, relevance_threshold=threshold, limit=limit
-                )
-                db_manager.display_search_results(results, query)
-
-            elif choice == "2":
-                # Search by research field
-                field_choices = [
-                    "Machine Learning",
-                    "Computer Vision",
-                    "Natural Language Processing",
-                    "Artificial Intelligence",
-                    "Data Science",
-                    "Other",
-                ]
-
-                field = Prompt.ask(
-                    "\n[bold]Select research field[/bold]", choices=field_choices
-                )
-                query = Prompt.ask("[bold]Enter search query for this field[/bold]")
-
-                use_threshold = Confirm.ask(
-                    "Set minimum relevance threshold?", default=False
-                )
-                threshold = None
-                if use_threshold:
-                    threshold = FloatPrompt.ask(
-                        "Relevance threshold (0.0-1.0)", default=0.3
-                    )
-
-                limit = IntPrompt.ask("Maximum results to show", default=10)
-
-                cli.print(f"\n[dim]Searching for '{query}' in {field}...[/dim]")
-                results = db_manager.search_by_research_field(
-                    query, field, threshold, limit
-                )
-                db_manager.display_search_results(results, f"{query} (Field: {field})")
-
-            elif choice == "3":
-                # Search by category
-                category_choices = [
+            category = Prompt.ask(
+                "🏷️ [bold]Category[/bold]",
+                choices=[
                     "cs.AI",
                     "cs.LG",
                     "cs.CV",
@@ -331,215 +115,392 @@ def search_papers_menu(db_manager: MindsDBManager, cli: Console):
                     "math",
                     "biology",
                     "other",
-                ]
+                ],
+                default="other",
+            )
 
-                category = Prompt.ask(
-                    "\n[bold]Select category[/bold]", choices=category_choices
+            # Date input with validation
+            while True:
+                pub_date_str = Prompt.ask(
+                    "📅 [bold]Publication Date[/bold] [dim](YYYY-MM-DD or press Enter for today)[/dim]",
+                    default=datetime.now().strftime("%Y-%m-%d"),
                 )
-                query = Prompt.ask("[bold]Enter search query for this category[/bold]")
-
-                use_threshold = Confirm.ask(
-                    "Set minimum relevance threshold?", default=False
-                )
-                threshold = None
-                if use_threshold:
-                    threshold = FloatPrompt.ask(
-                        "Relevance threshold (0.0-1.0)", default=0.3
+                try:
+                    datetime.strptime(pub_date_str, "%Y-%m-%d")
+                    break
+                except ValueError:
+                    self.console.print(
+                        "[red]❌ Invalid date format. Please use YYYY-MM-DD[/red]"
                     )
 
-                limit = IntPrompt.ask("Maximum results to show", default=10)
+            arxiv_id = Prompt.ask(
+                "🔬 [bold]ArXiv ID[/bold] [dim](optional)[/dim]", default=""
+            )
+            journal = Prompt.ask(
+                "📰 [bold]Journal/Conference[/bold] [dim](optional)[/dim]", default=""
+            )
 
-                cli.print(
-                    f"\n[dim]Searching for '{query}' in category {category}...[/dim]"
-                )
-                results = db_manager.search_by_category(
-                    query, category, threshold, limit
-                )
-                db_manager.display_search_results(
-                    results, f"{query} (Category: {category})"
-                )
+            research_field = Prompt.ask(
+                "🔍 [bold]Research Field[/bold]",
+                choices=[
+                    "Machine Learning",
+                    "Computer Vision",
+                    "Natural Language Processing",
+                    "Artificial Intelligence",
+                    "Data Science",
+                    "Other",
+                ],
+                default="Other",
+            )
 
-            elif choice == "4":
-                # Search by author
-                author = Prompt.ask(
-                    "\n[bold]Enter author name (partial match supported)[/bold]"
-                )
-                query = Prompt.ask("[bold]Enter search query[/bold]")
+            paper_type = Prompt.ask(
+                "📋 [bold]Paper Type[/bold]",
+                choices=[
+                    "Research Paper",
+                    "Review Paper",
+                    "Conference Paper",
+                    "Journal Article",
+                    "Preprint",
+                    "Other",
+                ],
+                default="Research Paper",
+            )
 
-                use_threshold = Confirm.ask(
-                    "Set minimum relevance threshold?", default=False
-                )
-                threshold = None
-                if use_threshold:
-                    threshold = FloatPrompt.ask(
-                        "Relevance threshold (0.0-1.0)", default=0.3
+            citation_count = IntPrompt.ask(
+                "📊 [bold]Citation Count[/bold] [dim](optional)[/dim]", default=0
+            )
+
+            self.console.print(
+                "\n📝 [bold]Abstract[/bold] [dim](Enter text, then press Enter twice when done)[/dim]"
+            )
+            abstract_lines = []
+            while True:
+                line = input()
+                if line.strip() == "":
+                    if abstract_lines and abstract_lines[-1].strip() == "":
+                        break
+                    abstract_lines.append(line)
+                else:
+                    abstract_lines.append(line)
+
+            abstract = "\n".join(abstract_lines).strip()
+
+            return Paper(
+                paper_id=paper_id,
+                title=title,
+                authors=authors,
+                category=category,
+                pub_date=pub_date_str,
+                arxiv_id=arxiv_id,
+                journal=journal,
+                research_field=research_field,
+                paper_type=paper_type,
+                citation_count=citation_count,
+                abstract=abstract,
+            )
+
+        except KeyboardInterrupt:
+            self.console.print("\n[yellow]❌ Paper entry cancelled[/yellow]")
+            return None
+
+    def handle_insert_papers(self):
+        """Handle paper insertion with improved workflow"""
+        self.current_context = "insert"
+
+        while True:
+            action = self.get_quick_action("insert")
+
+            if action in ["a", "add"]:
+                paper = self.collect_paper_info()
+                if paper:
+                    self.papers_to_insert.append(paper)
+                    self.console.print(
+                        f"[bold green]✅ Added '[bold]{paper.title}[/bold]'[/bold green]"
                     )
 
-                limit = IntPrompt.ask("Maximum results to show", default=10)
+            elif action in ["r", "review"]:
+                if not self.papers_to_insert:
+                    self.console.print("[yellow]📭 No papers to review[/yellow]")
+                    continue
 
-                cli.print(
-                    f"\n[dim]Searching for '{query}' by author '{author}'...[/dim]"
+                self.console.print(
+                    f"\n[bold cyan]📋 Review Queue ({len(self.papers_to_insert)} papers)[/bold cyan]"
                 )
-                results = db_manager.search_by_author(query, author, threshold, limit)
-                db_manager.display_search_results(
-                    results, f"{query} (Author: {author})"
-                )
-
-            elif choice == "5":
-                # Advanced search with multiple filters
-                query = Prompt.ask("\n[bold]Enter your search query[/bold]")
-
-                cli.print("\n[bold cyan]Optional Filters:[/bold cyan]")
-                cli.print("[dim]Press Enter to skip any filter[/dim]")
-
-                filters = {}
-
-                # Research field filter
-                research_field = Prompt.ask(
-                    "Research field",
-                    choices=[
-                        "Machine Learning",
-                        "Computer Vision",
-                        "Natural Language Processing",
-                        "Artificial Intelligence",
-                        "Data Science",
-                        "Other",
-                        "",
-                    ],
-                    default="",
-                )
-                if research_field:
-                    filters["research_field"] = research_field
-
-                # Category filter
-                category = Prompt.ask(
-                    "Category",
-                    choices=[
-                        "cs.AI",
-                        "cs.LG",
-                        "cs.CV",
-                        "cs.CL",
-                        "cs.IR",
-                        "cs.NE",
-                        "physics",
-                        "math",
-                        "biology",
-                        "other",
-                        "",
-                    ],
-                    default="",
-                )
-                if category:
-                    filters["category"] = category
-
-                # Paper type filter
-                paper_type = Prompt.ask(
-                    "Paper type",
-                    choices=[
-                        "Research Paper",
-                        "Review Paper",
-                        "Conference Paper",
-                        "Journal Article",
-                        "Preprint",
-                        "Other",
-                        "",
-                    ],
-                    default="",
-                )
-                if paper_type:
-                    filters["paper_type"] = paper_type
-
-                # Minimum citation count
-                min_citations = Prompt.ask(
-                    "Minimum citation count (press Enter to skip)", default=""
-                )
-                if min_citations.isdigit():
-                    filters["citation_count"] = int(min_citations)
-
-                # Relevance threshold
-                use_threshold = Confirm.ask(
-                    "Set minimum relevance threshold?", default=False
-                )
-                threshold = None
-                if use_threshold:
-                    threshold = FloatPrompt.ask(
-                        "Relevance threshold (0.0-1.0)", default=0.3
+                for i, paper in enumerate(self.papers_to_insert, 1):
+                    self.console.print(
+                        f"\n[bold blue]{i}.[/bold blue] [bold]{paper.title}[/bold]"
                     )
+                    self.console.print(f"   👥 {paper.authors}")
+                    self.console.print(
+                        f"   🏷️ {paper.category} | 🔍 {paper.research_field}"
+                    )
+                    self.console.print(f"   📅 {paper.pub_date}")
+                    abstract_preview = (
+                        paper.abstract[:150] + "..."
+                        if len(paper.abstract) > 150
+                        else paper.abstract
+                    )
+                    self.console.print(f"   📝 {abstract_preview}")
 
-                limit = IntPrompt.ask("Maximum results to show", default=10)
+            elif action in ["i", "insert"]:
+                if not self.papers_to_insert:
+                    self.console.print("[yellow]📭 No papers to insert[/yellow]")
+                    continue
 
-                cli.print(f"\n[dim]Performing advanced search for: '{query}'...[/dim]")
-                if filters:
-                    cli.print(f"[dim]Filters: {filters}[/dim]")
+                self.console.print(
+                    f"\n[bold yellow]🚀 Ready to insert {len(self.papers_to_insert)} papers[/bold yellow]"
+                )
+                if Confirm.ask("Proceed with insertion?", default=True):
+                    success = self.manager.insert_papers(self.papers_to_insert)
+                    if success:
+                        self.papers_to_insert.clear()
+                        self.console.print(
+                            "[bold green]✅ All papers inserted successfully![/bold green]"
+                        )
+                    else:
+                        self.console.print("[red]❌ Some papers failed to insert[/red]")
 
-                results = db_manager.search_papers(query, threshold, limit, **filters)
-                db_manager.display_search_results(results, f"{query} (Advanced)")
+            elif action in ["c", "clear"]:
+                if self.papers_to_insert and Confirm.ask(
+                    f"Clear all {len(self.papers_to_insert)} papers?", default=False
+                ):
+                    self.papers_to_insert.clear()
+                    self.console.print("[yellow]🗑️ Papers cleared[/yellow]")
 
-            elif choice == "6":
+            elif action in ["b", "back"]:
+                if self.papers_to_insert and not Confirm.ask(
+                    f"You have {len(self.papers_to_insert)} unsaved papers. Return anyway?",
+                    default=False,
+                ):
+                    continue
                 break
 
-    except KeyboardInterrupt:
-        cli.print("\n[yellow]Returning to main menu (Ctrl+C pressed)[/yellow]")
+    def perform_search(self, search_type: str):
+        """Perform different types of searches with streamlined interface"""
+        self.console.print(f"\n[bold cyan]🔍 {search_type.title()} Search[/bold cyan]")
+
+        if search_type == "general":
+            query = Prompt.ask("💭 [bold]Search query[/bold]")
+
+        elif search_type == "field":
+            field_choices = [
+                "Machine Learning",
+                "Computer Vision",
+                "Natural Language Processing",
+                "Artificial Intelligence",
+                "Data Science",
+                "Other",
+            ]
+            field = Prompt.ask("🔍 [bold]Research field[/bold]", choices=field_choices)
+            query = Prompt.ask("💭 [bold]Search query[/bold]")
+
+        elif search_type == "category":
+            category_choices = [
+                "cs.AI",
+                "cs.LG",
+                "cs.CV",
+                "cs.CL",
+                "cs.IR",
+                "cs.NE",
+                "physics",
+                "math",
+                "biology",
+                "other",
+            ]
+            category = Prompt.ask("🏷️ [bold]Category[/bold]", choices=category_choices)
+            query = Prompt.ask("💭 [bold]Search query[/bold]")
+
+        elif search_type == "author":
+            author = Prompt.ask(
+                "👥 [bold]Author name[/bold] [dim](partial match supported)[/dim]"
+            )
+            query = Prompt.ask("💭 [bold]Search query[/bold]")
+
+        elif search_type == "advanced":
+            return self.advanced_search()
+
+        # Common search options
+        use_threshold = Confirm.ask("🎯 Set relevance threshold?", default=False)
+        threshold = (
+            FloatPrompt.ask("📊 Threshold (0.0-1.0)", default=0.3)
+            if use_threshold
+            else None
+        )
+        limit = IntPrompt.ask("📑 Max results", default=10)
+
+        # Perform search based on type
+        self.show_status(f"Searching...")
+        results = []
+        try:
+            if search_type == "general":
+                results = self.manager.search_papers(query, threshold, limit)
+            elif search_type == "field":
+                results = self.manager.search_by_research_field(
+                    query, field, threshold, limit
+                )
+            elif search_type == "category":
+                results = self.manager.search_by_category(
+                    query, category, threshold, limit
+                )
+            elif search_type == "author":
+                results = self.manager.search_by_author(query, author, threshold, limit)
+
+            self.manager.display_search_results(results, query)
+
+        except Exception as e:
+            self.console.print(f"[red]❌ Search error: {str(e)}[/red]")
+
+    def advanced_search(self):
+        """Handle advanced search with multiple filters"""
+        self.console.print("\n[bold cyan]🔧 Advanced Search[/bold cyan]")
+
+        query = Prompt.ask("💭 [bold]Search query[/bold]")
+
+        self.console.print("\n[dim]🎛️ Optional filters (press Enter to skip):[/dim]")
+
+        filters = {}
+
+        # Research field filter
+        research_field = Prompt.ask(
+            "🔍 Research field",
+            choices=[
+                "Machine Learning",
+                "Computer Vision",
+                "Natural Language Processing",
+                "Artificial Intelligence",
+                "Data Science",
+                "Other",
+                "",
+            ],
+            default="",
+        )
+        if research_field:
+            filters["research_field"] = research_field
+
+        # Category filter
+        category = Prompt.ask(
+            "🏷️ Category",
+            choices=[
+                "cs.AI",
+                "cs.LG",
+                "cs.CV",
+                "cs.CL",
+                "cs.IR",
+                "cs.NE",
+                "physics",
+                "math",
+                "biology",
+                "other",
+                "",
+            ],
+            default="",
+        )
+        if category:
+            filters["category"] = category
+
+        # Paper type filter
+        paper_type = Prompt.ask(
+            "📋 Paper type",
+            choices=[
+                "Research Paper",
+                "Review Paper",
+                "Conference Paper",
+                "Journal Article",
+                "Preprint",
+                "Other",
+                "",
+            ],
+            default="",
+        )
+        if paper_type:
+            filters["paper_type"] = paper_type
+
+        # Minimum citation count
+        min_citations = Prompt.ask("📊 Min citations", default="")
+        if min_citations.isdigit():
+            filters["citation_count"] = int(min_citations)
+
+        # Search options
+        use_threshold = Confirm.ask("🎯 Set relevance threshold?", default=False)
+        threshold = (
+            FloatPrompt.ask("📊 Threshold (0.0-1.0)", default=0.3)
+            if use_threshold
+            else None
+        )
+        limit = IntPrompt.ask("📑 Max results", default=10)
+
+        self.show_status("Performing advanced search...")
+        if filters:
+            self.show_status(f"Filters: {filters}")
+
+        try:
+            results = self.manager.search_papers(query, threshold, limit, **filters)
+            self.manager.display_search_results(results, f"{query} (Advanced)")
+        except Exception as e:
+            self.console.print(f"[red]❌ Search error: {str(e)}[/red]")
+
+    def handle_search_papers(self):
+        """Handle paper search with improved workflow"""
+        self.current_context = "search"
+
+        while True:
+            action = self.get_quick_action("search")
+
+            if action in ["g", "general"]:
+                self.perform_search("general")
+            elif action in ["f", "field"]:
+                self.perform_search("field")
+            elif action in ["c", "category"]:
+                self.perform_search("category")
+            elif action in ["a", "author"]:
+                self.perform_search("author")
+            elif action in ["adv", "advanced"]:
+                self.perform_search("advanced")
+            elif action in ["b", "back"]:
+                break
+
+    def run(self):
+        """Main application loop with improved UX"""
+        try:
+            # Initial setup
+            self.clear_screen()
+            self.show_header()
+
+            self.show_status("Connecting to MindsDB...")
+            if self.manager.connect() is False:
+                return
+
+            self.show_status("✅ Connected successfully")
+
+            # Main application loop
+            while True:
+                action = self.get_quick_action("main")
+
+                if action in ["i", "insert"]:
+                    self.handle_insert_papers()
+                elif action in ["s", "search"]:
+                    self.handle_search_papers()
+                elif action in ["d", "demo"]:
+                    self.console.print(
+                        "\n[bold cyan]🎯 Loading sample data...[/bold cyan]"
+                    )
+                    try:
+                        insert_sample_papers(self.manager)
+                    except Exception as e:
+                        self.console.print(f"[red]❌ Error: {str(e)}[/red]")
+                elif action in ["q", "quit"]:
+                    self.console.print(
+                        "\n[bold green]👋 Thank you for using Scholar Map![/bold green]"
+                    )
+                    break
+
+        except KeyboardInterrupt:
+            self.console.print("\n\n[yellow]👋 Application interrupted[/yellow]")
+            self.console.print(
+                "[bold green]Thank you for using Scholar Map![/bold green]"
+            )
 
 
 if __name__ == "__main__":
-    manager = MindsDBManager()
-    console = Console()
-
-    # Display welcome header
-    welcome_text = Text("Scholar Map", style="bold blue")
-    welcome_panel = Panel(
-        welcome_text,
-        subtitle="Research Paper Knowledge Management System",
-        border_style="blue",
-        padding=(1, 2),
-    )
-    console.print(welcome_panel)
-
-    if manager.connect() is False:
-        exit(1)
-
-    try:
-        while True:
-            console.print()
-            menu_text = """[bold cyan]Available Options:[/bold cyan]
-
-[bold white]1.[/bold white] Insert Research Papers
-[bold white]2.[/bold white] Insert Sample Papers
-[bold white]3.[/bold white] Search Research Papers
-[bold white]4.[/bold white] Exit Application"""
-
-            menu_panel = Panel(
-                menu_text, title="Main Menu", border_style="cyan", padding=(1, 2)
-            )
-            console.print(menu_panel)
-
-            choice = Prompt.ask(
-                "Please select an option", choices=["1", "2", "3", "4"], default="4"
-            )
-
-            if choice == "1":
-                insert_papers_menu(manager, console)
-            elif choice == "2":
-                console.print()
-                try:
-                    insert_sample_papers(manager)
-                except KeyboardInterrupt:
-                    console.print(
-                        "\n[yellow]Sample data insertion cancelled (Ctrl+C)[/yellow]"
-                    )
-                except Exception as e:
-                    console.print(f"\n[red]Error inserting sample data: {str(e)}[/red]")
-            elif choice == "3":
-                search_papers_menu(manager, console)
-            elif choice == "4":
-                console.print()
-                console.print(
-                    "[bold green]Thank you for using Scholar Map![/bold green]"
-                )
-                console.print("[dim]Application terminated successfully.[/dim]")
-                break
-    except KeyboardInterrupt:
-        console.print("\n\n[yellow]Application interrupted by user (Ctrl+C)[/yellow]")
-        console.print("[bold green]Thank you for using Scholar Map![/bold green]")
-        console.print("[dim]Application terminated successfully.[/dim]")
+    app = ScholarMapCLI()
+    app.run()

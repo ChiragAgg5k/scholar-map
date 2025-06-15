@@ -323,23 +323,27 @@ class MindsDBManager:
             console.print(f"[red]Author search error: {str(e)}[/red]")
             return []
 
-    def display_search_results(self, results: Union[List[Dict[str, Any]], Any], query: str):
+    def display_search_results(
+        self, results: Union[List[Dict[str, Any]], Any], query: str
+    ):
         """Display search results in a formatted table"""
         # Handle both DataFrame and list results
-        if hasattr(results, 'empty'):
+        if hasattr(results, "empty"):
             # It's a DataFrame
             if results.empty:
-                console.print(f"[yellow]No results found for query: '{query}'[/yellow]")
+                console.print(
+                    f"[yellow]🔍 No results found for query: '{query}'[/yellow]"
+                )
                 return
             # Convert DataFrame to list of dicts for processing
-            results = results.to_dict('records')
+            results = results.to_dict("records")
         elif not results:
             # It's a list or other iterable
-            console.print(f"[yellow]No results found for query: '{query}'[/yellow]")
+            console.print(f"[yellow]🔍 No results found for query: '{query}'[/yellow]")
             return
 
-        console.print(f"\n[bold cyan]Search Results for: '{query}'[/bold cyan]")
-        console.print(f"[dim]Found {len(results)} matching papers[/dim]\n")
+        console.print(f"\n[bold cyan]🔍 Search Results for: '{query}'[/bold cyan]")
+        console.print(f"[dim]📊 Found {len(results)} matching papers[/dim]\n")
 
         table = Table(show_header=True, header_style="bold magenta")
         table.add_column("Relevance", style="green", width=10)
