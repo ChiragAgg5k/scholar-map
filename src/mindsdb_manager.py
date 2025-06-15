@@ -111,6 +111,13 @@ class MindsDBManager:
             console.print(
                 "[dim]Research papers knowledge base is now ready for use.[/dim]"
             )
+
+            add_index_query = """
+            CREATE INDEX ON KNOWLEDGE_BASE research_papers_kb;
+            """
+            query = project.query(add_index_query)
+            query.fetch()
+
             return True
         except (ConnectionError, TimeoutError, ValueError, OSError) as e:
             error_panel = Panel(
