@@ -38,7 +38,7 @@ class MindsDBManager:
             console.print("[dim]Attempting to connect to MindsDB server...[/dim]")
             self.server = mindsdb_sdk.connect(self.connection_url)
 
-            if self.server.knowledge_bases.research_papers_kb:
+            try:
                 self.research_papers_kb = self.server.knowledge_bases.research_papers_kb
                 console.print(
                     "[bold green]Connection established successfully![/bold green]"
@@ -46,7 +46,7 @@ class MindsDBManager:
                 console.print(
                     "[dim]Research papers knowledge base is ready for use.[/dim]"
                 )
-            else:
+            except Exception:
                 console.print(
                     "[bold green]Connection established successfully![/bold green]"
                 )
@@ -73,6 +73,22 @@ class MindsDBManager:
 
     def create_research_papers_kb(self):
         """Create research papers knowledge base"""
+
+        if not OPENAI_API_KEY:
+            error_panel = Panel(
+                f"[bold red]OpenAI API Key Missing[/bold red]\n\n"
+                f"The application requires an OpenAI API key to function.\n\n"
+                f"[yellow]Please ensure that:[/yellow]\n"
+                f"• The OPENAI_API_KEY environment variable is set\n"
+                f"• The API key is valid and has not expired\n"
+                f"• The .env file is properly configured (if using one)",
+                title="Configuration Error",
+                border_style="red",
+                padding=(1, 2),
+            )
+            console.print(error_panel)
+            raise SystemExit(1)
+
         try:
             kb_query = f"""
             CREATE KNOWLEDGE_BASE research_papers_kb

@@ -271,9 +271,11 @@ class KnowledgeBaseTestSuite:
                         results["responses"].append(
                             {
                                 "question": question,
-                                "response": response[:200] + "..."
-                                if len(response) > 200
-                                else response,
+                                "response": (
+                                    response[:200] + "..."
+                                    if len(response) > 200
+                                    else response
+                                ),
                                 "response_time": response_time,
                                 "quality_score": quality_score,
                                 "success": True,
@@ -611,11 +613,11 @@ def display_test_results(test_results: Dict[str, Any]):
             f"[bold]Database Status:[/bold] {'🟢 Healthy' if overall_score >= 70 else '🟡 Issues Detected' if overall_score >= 50 else '🔴 Critical Issues'}\n"
             f"[bold]Recommendations:[/bold] {'System ready for production' if overall_score >= 80 else 'Review performance metrics' if overall_score >= 60 else 'Address critical issues before deployment'}",
             title="Test Summary",
-            border_style="green"
-            if overall_score >= 70
-            else "yellow"
-            if overall_score >= 50
-            else "red",
+            border_style=(
+                "green"
+                if overall_score >= 70
+                else "yellow" if overall_score >= 50 else "red"
+            ),
         )
     )
 
@@ -1589,7 +1591,9 @@ def main():
         # Determine exit code based on overall test results
         overall_score = test_results.get("overall_score", 0)
         if overall_score >= 70:
-            console.print("\n[bold green]✅ All tests passed successfully![/bold green]")
+            console.print(
+                "\n[bold green]✅ All tests passed successfully![/bold green]"
+            )
             return 0
         elif overall_score >= 50:
             console.print(
