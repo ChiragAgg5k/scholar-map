@@ -93,16 +93,16 @@ class MindsDBManager:
             kb_query = f"""
             CREATE KNOWLEDGE_BASE research_papers_kb
             USING
-                embedding_model = {
+                embedding_model = {{
                     "provider": "openai",
-                    "model_name" : "text-embedding-3-large",
+                    "model_name": "text-embedding-3-large",
                     "api_key": "{OPENAI_API_KEY}"
-                },
-                reranking_model = {
+                }},
+                reranking_model = {{
                     "provider": "openai",
                     "model_name": "gpt-4o",
                     "api_key": "{OPENAI_API_KEY}"
-                },
+                }},
                 metadata_columns = [
                     'title', 
                     'authors', 
@@ -128,11 +128,12 @@ class MindsDBManager:
                 "[dim]Research papers knowledge base is now ready for use.[/dim]"
             )
 
-            add_index_query = """
-            CREATE INDEX ON KNOWLEDGE_BASE research_papers_kb;
-            """
-            query = project.query(add_index_query)
-            query.fetch()
+            # TODO: Use a workaround for adding an index, current implementation gives a `RuntimeError: create_index not supported for VectorStoreHandler research_papers_kb_chromadb` error
+            # add_index_query = """
+            # CREATE INDEX ON KNOWLEDGE_BASE research_papers_kb;
+            # """
+            # query = project.query(add_index_query)
+            # query.fetch()
 
             return True
         except (ConnectionError, TimeoutError, ValueError, OSError) as e:

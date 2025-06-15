@@ -28,6 +28,61 @@ ScholarMind is a command-line interface that transforms how researchers discover
     uv run src/main.py
     ```
 
+## Usage
+
+To start off, you can insert some sample papers by using the `d` or `demo` command. It will include some sample papers like:
+
+```bash
+╭─────────────────────────────────────────────────────────────────────────────────── Sample Paper 1 ───────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                                                                                                                      │
+│  Title: Attention Is All You Need: A Comprehensive Study of Transformer Architecture                                                                                                 │
+│  Authors: Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A.N., Kai...                                                                                        │
+│  Category: cs.LG                                                                                                                                                                     │
+│  Research Field: Natural Language Processing                                                                                                                                         │
+│  Citations: 45,230                                                                                                                                                                   │
+│  Abstract: The dominant sequence transduction models are based on complex recurrent or convolutional neural networks that include an encoder and a decoder. The b...                 │
+│                                                                                                                                                                                      │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+```
+
+After addition, it should look like this:
+
+```bash
+╭───────────────────────────────────────────────────────────────────────────────── Operation Complete ─────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                                                                                                                      │
+│  Sample Data Inserted Successfully!                                                                                                                                                  │
+│                                                                                                                                                                                      │
+│  Successfully inserted 10 sample research papers.                                                                                                                                    │
+│  These papers span multiple research fields including:                                                                                                                               │
+│  • Machine Learning & AI                                                                                                                                                             │
+│  • Computer Vision                                                                                                                                                                   │
+│  • Natural Language Processing                                                                                                                                                       │
+│  • Data Science                                                                                                                                                                      │
+│                                                                                                                                                                                      │
+│  You can now test search and analysis features with this data.                                                                                                                       │
+│                                                                                                                                                                                      │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+```
+
+You can query in natural language using the `adv` search option. It will show a table of results like this:
+
+```bash
+┏━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┓
+┃ Relevance  ┃ Title                                    ┃ Authors                   ┃ Field                ┃ Category   ┃
+┡━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━┩
+│ 0.810      │ Attention Is All You Need: A Comprehe... │ Vaswani, A., Shazeer, ... │ Natural Language ... │ cs.LG      │
+│ 0.536      │ BERT: Pre-training of Deep Bidirectio... │ Devlin, J., Chang, M.W... │ Natural Language ... │ cs.CL      │
+│ 0.434      │ ResNet: Deep Residual Learning for Im... │ He, K., Zhang, X., Ren... │ Computer Vision      │ cs.CV      │
+│ 0.391      │ GPT-3: Language Models are Few-Shot L... │ Brown, T.B., Mann, B.,... │ Natural Language ... │ cs.CL      │
+│ 0.317      │ Neural Information Retrieval: At the ... │ Mitra, B., Craswell, N.   │ Artificial Intell... │ cs.IR      │
+│ 0.291      │ Explainable AI: Interpreting, Explain... │ Samek, W., Montavon, G... │ Artificial Intell... │ cs.AI      │
+│ 0.254      │ You Only Look Once: Unified, Real-Tim... │ Redmon, J., Divvala, S... │ Computer Vision      │ cs.CV      │
+│ 0.251      │ Generative Adversarial Networks          │ Goodfellow, I., Pouget... │ Machine Learning     │ cs.LG      │
+│ 0.250      │ Federated Learning: Challenges, Metho... │ Li, T., Sahu, A.K., Ta... │ Machine Learning     │ cs.LG      │
+│ 0.250      │ Quantum Machine Learning: What Quantu... │ Biamonte, J., Wittek, ... │ Data Science         │ physics    │
+└────────────┴──────────────────────────────────────────┴───────────────────────────┴──────────────────────┴────────────┘
+```
+
 ## Checklist
 
 ### 🛠️ Build an app with KBs
