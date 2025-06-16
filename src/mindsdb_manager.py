@@ -53,7 +53,10 @@ class MindsDBManager:
                 console.print(
                     "[yellow]Setting up research papers knowledge base...[/yellow]"
                 )
-                self.create_research_papers_kb()
+                try:
+                    self.create_research_papers_kb()
+                except SystemExit:
+                    return False
 
         except (ConnectionError, TimeoutError, ValueError, OSError) as e:
             error_panel = Panel(
@@ -150,7 +153,7 @@ class MindsDBManager:
                 padding=(1, 2),
             )
             console.print(error_panel)
-            return False
+            raise SystemExit(1)
 
     def insert_papers(self, papers: List[Paper]):
         """Insert papers into the knowledge base"""

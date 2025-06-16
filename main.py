@@ -13,6 +13,7 @@ from rich.align import Align
 from src.mindsdb_manager import MindsDBManager
 from src.models.paper import Paper
 from src.sample_data_manager import insert_sample_papers
+from src.job_manager import JobManager
 
 
 class ScholarMapCLI:
@@ -21,6 +22,7 @@ class ScholarMapCLI:
     def __init__(self):
         self.console = Console()
         self.manager = MindsDBManager()
+        self.job_manager = JobManager(self.manager)
         self.current_context = "main"
         self.papers_to_insert = []
 
@@ -47,8 +49,19 @@ class ScholarMapCLI:
         """Get next action from user with minimal interface"""
         if context == "main":
             self.console.print("\n[bold cyan]Quick Actions:[/bold cyan]")
-            prompt_text = "[bold]Action[/bold] ([dim]i[/dim]nsert, [dim]s[/dim]earch, [dim]d[/dim]emo, [dim]q[/dim]uit)"
-            choices = ["i", "insert", "s", "search", "d", "demo", "q", "quit"]
+            prompt_text = "[bold]Action[/bold] ([dim]i[/dim]nsert, [dim]s[/dim]earch, [dim]d[/dim]emo, [dim]j[/dim]ob, [dim]q[/dim]uit)"
+            choices = [
+                "i",
+                "insert",
+                "s",
+                "search",
+                "d",
+                "demo",
+                "j",
+                "job",
+                "q",
+                "quit",
+            ]
         elif context == "insert":
             if self.papers_to_insert:
                 self.console.print(
@@ -83,6 +96,9 @@ class ScholarMapCLI:
                 "b",
                 "back",
             ]
+        elif context == "job":
+            prompt_text = "[bold]Job Action[/bold] ([dim]c[/dim]reate, [dim]d[/dim]elete, [dim]s[/dim]tatus, [dim]b[/dim]ack)"
+            choices = ["c", "create", "d", "delete", "s", "status", "b", "back"]
         else:
             choices = ["b", "back"]
             prompt_text = "[bold]Action[/bold] ([dim]b[/dim]ack)"
@@ -459,6 +475,30 @@ class ScholarMapCLI:
             elif action in ["b", "back"]:
                 break
 
+    def handle_job_management(self):
+        """Handle job management operations"""
+        self.current_context = "job"
+
+        while True:
+            action = self.get_quick_action("job")
+
+            if action in ["c", "create"]:
+                interval = IntPrompt.ask(
+                    "⏱️ [bold]Job interval (minutes)[/bold]", default=60
+                )
+                if Confirm.ask("Create periodic paper insertion job?", default=True):
+                    self.job_manager.create_insertion_job(interval)
+
+            elif action in ["d", "delete"]:
+                if Confirm.ask("Delete periodic paper insertion job?", default=False):
+                    self.job_manager.delete_job()
+
+            elif action in ["s", "status"]:
+                self.job_manager.display_job_status()
+
+            elif action in ["b", "back"]:
+                break
+
     def run(self):
         """Main application loop with improved UX"""
         try:
@@ -488,6 +528,8 @@ class ScholarMapCLI:
                         insert_sample_papers(self.manager)
                     except Exception as e:
                         self.console.print(f"[red]❌ Error: {str(e)}[/red]")
+                elif action in ["j", "job"]:
+                    self.handle_job_management()
                 elif action in ["q", "quit"]:
                     self.console.print(
                         "\n[bold green]👋 Thank you for using Scholar Map![/bold green]"

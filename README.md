@@ -95,3 +95,7 @@ ScholarMind is a command-line interface that transforms how researchers discover
 ### 🛠️ Use metadata columns
 
 1. Define `metadata_columns` during ingestion and use WHERE clauses that combine semantic search with SQL attribute filtering on `metadata_columns` - [here](https://github.com/ChiragAgg5k/scholar-map/blob/9dc1420c07d0231c9f039f09e8eb681fff5dc5d3/src/mindsdb_manager.py#L90) ✅
+
+### 🛠️ Integrate JOBS
+
+Set up a 🔗 MindsDB JOB that periodically checks a data source and inserts new data into the KB (using LAST or similar logic) -
