@@ -93,6 +93,23 @@ class MindsDBManager:
             raise SystemExit(1)
 
         try:
+            # db_query = """
+            # CREATE DATABASE research_papers_db
+            # WITH ENGINE = 'pgvector',
+            # PARAMETERS = {
+            #     "host": "localhost",
+            #     "port": 5432,
+            #     "database": "postgres",
+            #     "user": "user",
+            #     "password": "password",
+            #     "distance": "cosine"
+            # };
+            # """
+
+            # project = self.server.projects.mindsdb
+            # query = project.query(db_query)
+            # query.fetch()
+
             kb_query = f"""
             CREATE KNOWLEDGE_BASE research_papers_kb
             USING
@@ -120,6 +137,7 @@ class MindsDBManager:
                 content_columns = ['abstract', 'full_text'],
                 id_column = 'paper_id';
             """
+
             project = self.server.projects.mindsdb
             query = project.query(kb_query)
             query.fetch()
