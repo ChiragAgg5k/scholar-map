@@ -9,6 +9,7 @@ from rich.text import Text
 from rich.live import Live
 from rich.layout import Layout
 from rich.align import Align
+import json
 
 from src.mindsdb_manager import MindsDBManager
 from src.models.paper import Paper
@@ -49,12 +50,14 @@ class ScholarMapCLI:
         """Get next action from user with minimal interface"""
         if context == "main":
             self.console.print("\n[bold cyan]Quick Actions:[/bold cyan]")
-            prompt_text = "[bold]Action[/bold] ([dim]i[/dim]nsert, [dim]s[/dim]earch, [dim]d[/dim]emo, [dim]j[/dim]ob, [dim]q[/dim]uit)"
+            prompt_text = "[bold]Action[/bold] ([dim]i[/dim]nsert, [dim]s[/dim]earch, [dim]a[/dim]i, [dim]d[/dim]emo, [dim]j[/dim]ob, [dim]q[/dim]uit)"
             choices = [
                 "i",
                 "insert",
                 "s",
                 "search",
+                "a",
+                "ai",
                 "d",
                 "demo",
                 "j",
@@ -96,6 +99,9 @@ class ScholarMapCLI:
                 "b",
                 "back",
             ]
+        elif context == "ai":
+            prompt_text = "[bold]AI Features[/bold] ([dim]s[/dim]ummary, [dim]g[/dim]enerate, [dim]b[/dim]ack)"
+            choices = ["s", "summary", "g", "generate", "b", "back"]
         elif context == "job":
             prompt_text = "[bold]Job Action[/bold] ([dim]c[/dim]reate, [dim]d[/dim]elete, [dim]s[/dim]tatus, [dim]b[/dim]ack)"
             choices = ["c", "create", "d", "delete", "s", "status", "b", "back"]
@@ -499,6 +505,177 @@ class ScholarMapCLI:
             elif action in ["b", "back"]:
                 break
 
+    def handle_ai_features(self):
+        """Handle AI-related features"""
+        self.current_context = "ai"
+
+        while True:
+            action = self.get_quick_action("ai")
+
+            if action in ["s", "summary"]:
+                self.view_paper_summary()
+            elif action in ["g", "generate"]:
+                self.generate_summary_for_paper()
+            elif action in ["b", "back"]:
+                break
+
+    def view_paper_summary(self):
+        """View AI-generated summary for a specific paper"""
+        self.console.print("\n[bold cyan]🤖 View Paper Summary[/bold cyan]")
+
+        # First, let user search for papers
+        query = Prompt.ask(
+            "💭 [bold]Search for papers[/bold] [dim](to find paper ID)[/dim]"
+        )
+        limit = IntPrompt.ask("📑 Max results", default=5)
+
+        try:
+            results = self.manager.search_papers(query, limit=limit)
+
+            # Handle both DataFrame and list results
+            if hasattr(results, "empty"):
+                # It's a DataFrame
+                if results.empty:
+                    self.console.print(
+                        "[yellow]❌ No papers found for the search query.[/yellow]"
+                    )
+                    return
+                # Convert DataFrame to list of dicts for processing
+                results = results.to_dict("records")
+            elif not results:
+                # It's a list or other iterable
+                self.console.print(
+                    "[yellow]❌ No papers found for the search query.[/yellow]"
+                )
+                return
+
+            # Debug: Show the structure of the first result
+            if results:
+                self.console.print(
+                    f"[dim]Debug: First result keys: {list(results[0].keys())}[/dim]"
+                )
+                self.console.print(
+                    f"[dim]Debug: First result structure: {results[0]}[/dim]"
+                )
+
+            # Display search results for selection
+            self.console.print(f"\n[bold]Found {len(results)} papers:[/bold]")
+            for i, result in enumerate(results, 1):
+                metadata = result.get("metadata", {})
+                if isinstance(metadata, str):
+                    try:
+                        metadata = json.loads(metadata)
+                    except:
+                        metadata = {}
+
+                title = metadata.get("title", "N/A")
+                authors = metadata.get("authors", "N/A")
+
+                # Try to get paper_id from different possible locations
+                paper_id = (
+                    result.get("paper_id", "")
+                    or result.get("id", "")
+                    or metadata.get("paper_id", "")
+                )
+
+                self.console.print(f"{i}. [bold]{title}[/bold]")
+                self.console.print(f"   👥 {authors}")
+                self.console.print(f"   🆔 {paper_id}")
+                self.console.print()
+
+            # Let user select a paper
+            choice = IntPrompt.ask(
+                "📋 [bold]Select paper ID (not number!)[/bold]", default=1
+            )
+            if 1 <= choice <= len(results):
+                selected_paper = results[choice - 1]
+
+                # Try to get paper_id from different possible locations
+                metadata = selected_paper.get("metadata", {})
+                if isinstance(metadata, str):
+                    try:
+                        metadata = json.loads(metadata)
+                    except:
+                        metadata = {}
+
+                paper_id = (
+                    selected_paper.get("paper_id", "")
+                    or selected_paper.get("id", "")
+                    or metadata.get("paper_id", "")
+                )
+
+                if paper_id:
+                    self.manager.display_paper_summary(paper_id)
+                else:
+                    self.console.print("[red]❌ Could not retrieve paper ID.[/red]")
+            else:
+                self.console.print("[red]❌ Invalid selection.[/red]")
+
+        except Exception as e:
+            self.console.print(f"[red]❌ Error: {str(e)}[/red]")
+
+    def generate_summary_for_paper(self):
+        """Generate AI summary for a specific paper"""
+        self.console.print("\n[bold cyan]🤖 Generate AI Summary[/bold cyan]")
+
+        # Let user input paper details manually
+        title = Prompt.ask("📖 [bold]Paper title[/bold]")
+        authors = Prompt.ask("👥 [bold]Authors[/bold]")
+        research_field = Prompt.ask("🔍 [bold]Research field[/bold]")
+
+        self.console.print(
+            "\n📝 [bold]Abstract[/bold] [dim](Enter text, then press Enter twice when done)[/dim]"
+        )
+        abstract_lines = []
+        while True:
+            line = input()
+            if line.strip() == "":
+                if abstract_lines and abstract_lines[-1].strip() == "":
+                    break
+                abstract_lines.append(line)
+            else:
+                abstract_lines.append(line)
+
+        abstract = "\n".join(abstract_lines).strip()
+
+        if not abstract:
+            self.console.print(
+                "[red]❌ Abstract is required for summary generation.[/red]"
+            )
+            return
+
+        # Create a temporary paper object for summary generation
+        temp_paper = Paper(
+            paper_id="temp",
+            title=title,
+            authors=authors,
+            category="temp",
+            pub_date="",
+            arxiv_id="",
+            journal="",
+            research_field=research_field,
+            paper_type="",
+            citation_count=0,
+            abstract=abstract,
+        )
+
+        try:
+            self.console.print("\n[dim]Generating AI summary...[/dim]")
+            summary = self.manager.generate_paper_summary(temp_paper)
+
+            if summary:
+                self.console.print(
+                    f"\n[bold green]🤖 AI-Generated Summary:[/bold green]"
+                )
+                self.console.print(f"[green]{summary}[/green]")
+            else:
+                self.console.print(
+                    "[yellow]❌ Could not generate summary. Please check your input and try again.[/yellow]"
+                )
+
+        except Exception as e:
+            self.console.print(f"[red]❌ Error generating summary: {str(e)}[/red]")
+
     def run(self):
         """Main application loop with improved UX"""
         try:
@@ -520,6 +697,8 @@ class ScholarMapCLI:
                     self.handle_insert_papers()
                 elif action in ["s", "search"]:
                     self.handle_search_papers()
+                elif action in ["a", "ai"]:
+                    self.handle_ai_features()
                 elif action in ["d", "demo"]:
                     self.console.print(
                         "\n[bold cyan]🎯 Loading sample data...[/bold cyan]"

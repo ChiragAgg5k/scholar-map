@@ -1,8 +1,23 @@
 # Scholar Map CLI 🧠
 
-**AI-Powered Research Assistant using MindsDB Knowledge Bases**
+**AI-Powered Research Assistant using MindsDB Knowledge Bases with Multi-Step AI Workflow**
 
-ScholarMind is a command-line interface that transforms how researchers discover and explore academic papers. Instead of traditional keyword searches, use natural language queries to find contextually relevant research papers through semantic search powered by MindsDB.
+ScholarMind is a command-line interface that transforms how researchers discover and explore academic papers. Instead of traditional keyword searches, use natural language queries to find contextually relevant research papers through semantic search powered by MindsDB. The system now includes a multi-step AI workflow that automatically generates summaries for research papers using AI tables.
+
+## 🚀 New Features: Multi-Step AI Workflow
+
+### 🤖 AI-Powered Paper Summarization
+- **Automatic Summary Generation**: When papers are inserted, the system automatically generates AI-powered summaries using GPT-4
+- **AI Table Integration**: Uses MindsDB AI tables to create intelligent summaries from paper abstracts
+- **Enhanced Search Results**: View AI-generated summaries alongside search results
+- **Standalone Summary Generation**: Generate summaries for papers without inserting them into the knowledge base
+
+### 🔗 Multi-Step Workflow
+1. **Knowledge Base Creation**: Sets up research papers knowledge base with semantic search
+2. **AI Table Setup**: Creates `paper_summarizer_model` for automatic summarization
+3. **Paper Insertion**: Automatically generates summaries during insertion
+4. **Enhanced Search**: Displays summaries in search results with summary indicators
+5. **Summary Viewing**: Dedicated interface to view detailed paper information with AI summaries
 
 ## How to run
 
@@ -25,12 +40,31 @@ ScholarMind is a command-line interface that transforms how researchers discover
 
 6. Run the app by running:
     ```bash
-    uv run src/main.py
+    uv run main.py
     ```
 
 ## Usage
 
-- To start off, you can insert some sample papers by using the `d` or `demo` command. It will include some sample papers like:
+### Main Menu Options
+- **`i` or `insert`**: Add new research papers with automatic AI summary generation
+- **`s` or `search`**: Search papers using semantic queries
+- **`a` or `ai`**: Access AI features (view summaries, generate summaries)
+- **`d` or `demo`**: Load sample papers with AI-generated summaries
+- **`j` or `job`**: Manage periodic paper insertion jobs
+- **`q` or `quit`**: Exit the application
+
+### AI Features Menu
+- **`s` or `summary`**: View AI-generated summaries for specific papers
+- **`g` or `generate`**: Generate AI summaries for papers without inserting them
+- **`b` or `back`**: Return to main menu
+
+### Enhanced Search Results
+Search results now include a summary indicator column:
+- **📝**: Paper has an AI-generated summary
+- **❌**: No summary available
+
+### Sample Data with AI Summaries
+To start off, you can insert some sample papers by using the `d` or `demo` command. It will include sample papers with AI-generated summaries like:
 
 ```bash
 ╭─────────────────────────────────────────────────────────────────────────────────── Sample Paper 1 ───────────────────────────────────────────────────────────────────────────────────╮
@@ -41,47 +75,63 @@ ScholarMind is a command-line interface that transforms how researchers discover
 │  Research Field: Natural Language Processing                                                                                                                                         │
 │  Citations: 45,230                                                                                                                                                                   │
 │  Abstract: The dominant sequence transduction models are based on complex recurrent or convolutional neural networks that include an encoder and a decoder. The b...                 │
+│  🤖 AI Summary: This paper introduces the Transformer architecture, which uses attention mechanisms instead of recurrence or convolutions for sequence transduction. The model achieves superior performance on machine translation tasks while being more parallelizable and faster to train than previous approaches. │
 │                                                                                                                                                                                      │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
-- After addition, it should look like this:
-
+### Enhanced Search Results with Summary Indicators
 ```bash
-╭───────────────────────────────────────────────────────────────────────────────── Operation Complete ─────────────────────────────────────────────────────────────────────────────────╮
-│                                                                                                                                                                                      │
-│  Sample Data Inserted Successfully!                                                                                                                                                  │
-│                                                                                                                                                                                      │
-│  Successfully inserted 10 sample research papers.                                                                                                                                    │
-│  These papers span multiple research fields including:                                                                                                                               │
-│  • Machine Learning & AI                                                                                                                                                             │
-│  • Computer Vision                                                                                                                                                                   │
-│  • Natural Language Processing                                                                                                                                                       │
-│  • Data Science                                                                                                                                                                      │
-│                                                                                                                                                                                      │
-│  You can now test search and analysis features with this data.                                                                                                                       │
-│                                                                                                                                                                                      │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+┏━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━┓
+┃ Relevance  ┃ Title                                    ┃ Authors                   ┃ Field                ┃ Category   ┃ Summary  ┃
+┡━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━┩
+│ 0.810      │ Attention Is All You Need: A Comprehe... │ Vaswani, A., Shazeer, ... │ Natural Language ... │ cs.LG      │ 📝       │
+│ 0.536      │ BERT: Pre-training of Deep Bidirectio... │ Devlin, J., Chang, M.W... │ Natural Language ... │ cs.CL      │ 📝       │
+│ 0.434      │ ResNet: Deep Residual Learning for Im... │ He, K., Zhang, X., Ren... │ Computer Vision      │ cs.CV      │ 📝       │
+└────────────┴──────────────────────────────────────────┴───────────────────────────┴──────────────────────┴────────────┴──────────┘
 ```
 
-- You can query in natural language using the `adv` search option. It will show a table of results like this:
+## Testing the AI Workflow
+
+Run the test script to verify the AI workflow functionality:
 
 ```bash
-┏━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┓
-┃ Relevance  ┃ Title                                    ┃ Authors                   ┃ Field                ┃ Category   ┃
-┡━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━┩
-│ 0.810      │ Attention Is All You Need: A Comprehe... │ Vaswani, A., Shazeer, ... │ Natural Language ... │ cs.LG      │
-│ 0.536      │ BERT: Pre-training of Deep Bidirectio... │ Devlin, J., Chang, M.W... │ Natural Language ... │ cs.CL      │
-│ 0.434      │ ResNet: Deep Residual Learning for Im... │ He, K., Zhang, X., Ren... │ Computer Vision      │ cs.CV      │
-│ 0.391      │ GPT-3: Language Models are Few-Shot L... │ Brown, T.B., Mann, B.,... │ Natural Language ... │ cs.CL      │
-│ 0.317      │ Neural Information Retrieval: At the ... │ Mitra, B., Craswell, N.   │ Artificial Intell... │ cs.IR      │
-│ 0.291      │ Explainable AI: Interpreting, Explain... │ Samek, W., Montavon, G... │ Artificial Intell... │ cs.AI      │
-│ 0.254      │ You Only Look Once: Unified, Real-Tim... │ Redmon, J., Divvala, S... │ Computer Vision      │ cs.CV      │
-│ 0.251      │ Generative Adversarial Networks          │ Goodfellow, I., Pouget... │ Machine Learning     │ cs.LG      │
-│ 0.250      │ Federated Learning: Challenges, Metho... │ Li, T., Sahu, A.K., Ta... │ Machine Learning     │ cs.LG      │
-│ 0.250      │ Quantum Machine Learning: What Quantu... │ Biamonte, J., Wittek, ... │ Data Science         │ physics    │
-└────────────┴──────────────────────────────────────────┴───────────────────────────┴──────────────────────┴────────────┘
+uv run test_ai_workflow.py
 ```
+
+This will test:
+- AI table creation for summarization
+- Automatic summary generation during paper insertion
+- Enhanced search results with summary indicators
+- Summary viewing functionality
+
+## Technical Implementation
+
+### AI Table Creation
+The system creates a MindsDB AI table for summarization:
+
+```sql
+CREATE MODEL paper_summarizer_model
+PREDICT summary
+USING
+    engine = 'openai_engine',
+    model_name = 'gpt-4o',
+    api_key = 'your_openai_api_key',
+    prompt_template = 'Generate a concise summary of the following research paper abstract. Focus on the key contributions, methodology, and findings. Keep the summary under 200 words and make it accessible to researchers in the field.
+
+    Abstract: {{abstract}}
+    Title: {{title}}
+    Authors: {{authors}}
+    Research Field: {{research_field}}
+    
+    Summary:';
+```
+
+### Multi-Step Workflow Process
+1. **Setup Phase**: Creates knowledge base and AI table simultaneously
+2. **Insertion Phase**: Generates summaries using AI table before inserting papers
+3. **Storage Phase**: Stores papers with summaries in the knowledge base
+4. **Retrieval Phase**: Displays summaries in search results and dedicated views
 
 ## Checklist
 
@@ -98,4 +148,11 @@ ScholarMind is a command-line interface that transforms how researchers discover
 
 ### 🛠️ Integrate JOBS
 
-Set up a 🔗 MindsDB JOB that periodically checks a data source and inserts new data into the KB (using LAST or similar logic) -
+Set up a 🔗 MindsDB JOB that periodically checks a data source and inserts new data into the KB (using LAST or similar logic) - [here](https://github.com/ChiragAgg5k/scholar-map/blob/9dc1420c07d0231c9f039f09e8eb681fff5dc5d3/src/job_manager.py#L25) ✅
+
+### 🛠️ Multi-Step AI Workflow
+
+1. **AI Table Creation**: Creates `paper_summarizer_model` for automatic summarization ✅
+2. **Workflow Integration**: Automatically generates summaries during paper insertion ✅
+3. **Enhanced Display**: Shows summaries in search results and dedicated views ✅
+4. **CLI Integration**: Provides dedicated AI features menu for summary management ✅

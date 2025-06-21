@@ -36,7 +36,7 @@ class JobManager:
             CREATE JOB IF NOT EXISTS mindsdb.{self.job_name} AS (
                 INSERT INTO research_papers_kb 
                 (paper_id, title, authors, category, pub_date, arxiv_id, journal, 
-                research_field, paper_type, citation_count, abstract)
+                research_field, paper_type, citation_count, abstract, summary)
                 VALUES (
                     '{uuid.uuid4()}' as paper_id,
                     '{fake.sentence()}' as title,
@@ -48,7 +48,8 @@ class JobManager:
                     'Machine Learning' as research_field,
                     'Research Paper' as paper_type,
                     '{fake.random_int(min=0, max=100)}' as citation_count,
-                    '{fake.text(max_nb_chars=500)}' as abstract
+                    '{fake.text(max_nb_chars=500)}' as abstract,
+                    'AI-generated summary of the research paper' as summary
                 )
             )
             EVERY {interval_minutes} minutes;

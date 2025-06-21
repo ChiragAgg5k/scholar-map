@@ -18,4 +18,5 @@ class Paper:
     paper_type: str
     citation_count: int
     abstract: str
+    summary: str = ""
     relevance_score: float = 0.0

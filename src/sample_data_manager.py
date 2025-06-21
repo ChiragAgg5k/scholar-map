@@ -33,6 +33,7 @@ def create_sample_papers() -> List[Paper]:
             paper_type="Conference Paper",
             citation_count=45230,
             abstract="The dominant sequence transduction models are based on complex recurrent or convolutional neural networks that include an encoder and a decoder. The best performing models also connect the encoder and decoder through an attention mechanism. We propose a new simple network architecture, the Transformer, based solely on attention mechanisms, dispensing with recurrence and convolutions entirely. Experiments on two machine translation tasks show these models to be superior in quality while being more parallelizable and requiring significantly less time to train.",
+            summary="This paper introduces the Transformer architecture, which uses attention mechanisms instead of recurrence or convolutions for sequence transduction. The model achieves superior performance on machine translation tasks while being more parallelizable and faster to train than previous approaches.",
         ),
         Paper(
             paper_id=str(uuid.uuid4()),
@@ -46,6 +47,7 @@ def create_sample_papers() -> List[Paper]:
             paper_type="Conference Paper",
             citation_count=38560,
             abstract="We introduce a new language representation model called BERT, which stands for Bidirectional Encoder Representations from Transformers. Unlike recent language representation models, BERT is designed to pre-train deep bidirectional representations from unlabeled text by jointly conditioning on both left and right context in all layers. As a result, the pre-trained BERT model can be fine-tuned with just one additional output layer to create state-of-the-art models for a wide range of tasks.",
+            summary="BERT introduces bidirectional pre-training for language understanding, enabling fine-tuning with minimal additional layers to achieve state-of-the-art performance across various NLP tasks.",
         ),
         Paper(
             paper_id=str(uuid.uuid4()),
@@ -59,6 +61,7 @@ def create_sample_papers() -> List[Paper]:
             paper_type="Conference Paper",
             citation_count=52340,
             abstract="We propose a new framework for estimating generative models via an adversarial process, in which we simultaneously train two models: a generative model G that captures the data distribution, and a discriminative model D that estimates the probability that a sample came from the training data rather than G. The training procedure for G is to maximize the probability of D making a mistake. This framework corresponds to a minimax two-player game.",
+            summary="GANs introduce an adversarial training framework with a generator and discriminator competing in a minimax game, enabling high-quality generative modeling across various domains.",
         ),
         Paper(
             paper_id=str(uuid.uuid4()),
@@ -72,6 +75,7 @@ def create_sample_papers() -> List[Paper]:
             paper_type="Conference Paper",
             citation_count=89230,
             abstract="Deeper neural networks are more difficult to train. We present a residual learning framework to ease the training of networks that are substantially deeper than those used previously. We explicitly reformulate the layers as learning residual functions with reference to the layer inputs, instead of learning unreferenced functions. We provide comprehensive empirical evidence showing that these residual networks are easier to optimize.",
+            summary="ResNet introduces residual connections that enable training of much deeper networks by learning residual functions, significantly improving image recognition performance.",
         ),
         Paper(
             paper_id=str(uuid.uuid4()),
@@ -85,6 +89,7 @@ def create_sample_papers() -> List[Paper]:
             paper_type="Conference Paper",
             citation_count=28450,
             abstract="Recent work has demonstrated substantial gains on many NLP tasks and benchmarks by pre-training on a large corpus of text followed by fine-tuning on a specific task. While typically task-agnostic in architecture, this method still requires task-specific fine-tuning datasets of thousands or tens of thousands of examples. By contrast, humans can generally perform a new language task from only a few examples or from simple instructions.",
+            summary="GPT-3 demonstrates that large language models can perform new tasks with minimal examples through few-shot learning, reducing the need for extensive fine-tuning datasets.",
         ),
         Paper(
             paper_id=str(uuid.uuid4()),
@@ -98,6 +103,7 @@ def create_sample_papers() -> List[Paper]:
             paper_type="Conference Paper",
             citation_count=31200,
             abstract="We present YOLO, a new approach to object detection. Prior work on object detection repurposes classifiers to perform detection. Instead, we frame object detection as a regression problem to spatially separated bounding boxes and associated class probabilities. A single neural network predicts bounding boxes and class probabilities directly from full images in one evaluation.",
+            summary="YOLO frames object detection as a regression problem, enabling real-time detection with a single neural network evaluation, significantly improving speed over previous approaches.",
         ),
         Paper(
             paper_id=str(uuid.uuid4()),
@@ -111,6 +117,7 @@ def create_sample_papers() -> List[Paper]:
             paper_type="Review Paper",
             citation_count=1230,
             abstract="Neural ranking models for information retrieval (IR) use shallow or deep neural networks to rank search results in response to a query. Traditional learning to rank models employ supervised machine learning over hand-crafted IR features. By contrast, neural models learn representations of language from raw text that can bridge the gap between query and document vocabulary.",
+            summary="This review discusses neural ranking models for information retrieval, highlighting how they learn language representations from raw text to improve search result ranking.",
         ),
         Paper(
             paper_id=str(uuid.uuid4()),
@@ -124,6 +131,7 @@ def create_sample_papers() -> List[Paper]:
             paper_type="Review Paper",
             citation_count=8940,
             abstract="Federated learning (FL) is a machine learning setting where many clients (e.g., mobile devices or whole organizations) collaboratively train a model under the orchestration of a central server, while keeping the training data decentralized. This approach enables multiple actors to build a common, robust machine learning model without sharing data, thus addressing critical issues such as data privacy.",
+            summary="Federated learning enables collaborative model training across decentralized clients while preserving data privacy, addressing critical concerns in distributed machine learning.",
         ),
         Paper(
             paper_id=str(uuid.uuid4()),
@@ -137,6 +145,7 @@ def create_sample_papers() -> List[Paper]:
             paper_type="Journal Article",
             citation_count=2150,
             abstract="Quantum machine learning is an emerging interdisciplinary research area at the intersection of quantum physics and machine learning. The most common use of the term refers to machine learning algorithms for the analysis of classical data executed on a quantum computer. This includes hybrid methods that involve both classical and quantum processing.",
+            summary="This paper explores quantum machine learning at the intersection of quantum physics and ML, focusing on algorithms for classical data analysis on quantum computers.",
         ),
         Paper(
             paper_id=str(uuid.uuid4()),
@@ -150,6 +159,7 @@ def create_sample_papers() -> List[Paper]:
             paper_type="Journal Article",
             citation_count=3420,
             abstract="The development of 'intelligent' systems that can take decisions and perform actions autonomously and without constant human oversight is progressing rapidly. However, a key component of intelligent systems is currently lagging behind: the ability to explain decisions to users and stakeholders. This book addresses this challenge by providing a comprehensive introduction to interpretable machine learning.",
+            summary="This book addresses the challenge of explainable AI by providing comprehensive methods for interpreting and explaining deep learning decisions to users and stakeholders.",
         ),
     ]
 
@@ -228,7 +238,7 @@ def insert_sample_papers(db_manager: MindsDBManager) -> bool:
                 for paper in sample_papers:
                     insert_query = f"""
                     INSERT INTO research_papers_kb 
-                    (paper_id, title, authors, category, pub_date, arxiv_id, journal, research_field, paper_type, citation_count, abstract)
+                    (paper_id, title, authors, category, pub_date, arxiv_id, journal, research_field, paper_type, citation_count, abstract, summary)
                     VALUES (
                         '{paper.paper_id}',
                         '{paper.title.replace("'", "''")}',
@@ -240,7 +250,8 @@ def insert_sample_papers(db_manager: MindsDBManager) -> bool:
                         '{paper.research_field}',
                         '{paper.paper_type}',
                         {paper.citation_count},
-                        '{paper.abstract.replace("'", "''")}'
+                        '{paper.abstract.replace("'", "''")}',
+                        '{paper.summary.replace("'", "''")}'
                     )
                     """
 

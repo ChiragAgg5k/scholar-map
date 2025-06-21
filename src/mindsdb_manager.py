@@ -124,6 +124,7 @@ class MindsDBManager:
                     "api_key": "{OPENAI_API_KEY}"
                 }},
                 metadata_columns = [
+                    'paper_id',
                     'title', 
                     'authors', 
                     'category', 
@@ -132,7 +133,8 @@ class MindsDBManager:
                     'journal',
                     'research_field',
                     'paper_type',
-                    'citation_count'
+                    'citation_count',
+                    'summary'
                 ],
                 content_columns = ['abstract', 'full_text'],
                 id_column = 'paper_id';
@@ -148,6 +150,9 @@ class MindsDBManager:
             console.print(
                 "[dim]Research papers knowledge base is now ready for use.[/dim]"
             )
+
+            # Create AI table for summarization
+            self.create_summarization_model()
 
             # TODO: Use a workaround for adding an index, current implementation gives a `RuntimeError: create_index not supported for VectorStoreHandler research_papers_kb_chromadb` error
             # add_index_query = """
@@ -173,6 +178,83 @@ class MindsDBManager:
             console.print(error_panel)
             raise SystemExit(1)
 
+    def create_summarization_model(self):
+        """Create AI table for paper summarization"""
+        try:
+            console.print("[dim]Setting up AI summarization model...[/dim]")
+
+            engine_query = f"""
+            CREATE ML_ENGINE openai_engine
+            FROM openai
+            USING
+                openai_api_key = '{OPENAI_API_KEY}';
+            """
+
+            project = self.server.projects.mindsdb
+            query = project.query(engine_query)
+            query.fetch()
+
+            summary_model_query = f"""
+            CREATE MODEL paper_summarizer_model
+            PREDICT summary
+            USING
+                engine = 'openai_engine',
+                model_name = 'gpt-4o',
+                prompt_template = 'Generate a concise summary of the following research paper abstract. Focus on the key contributions, methodology, and findings. Keep the summary under 200 words and make it accessible to researchers in the field.
+
+                Abstract: {{abstract}}
+                Title: {{title}}
+                Authors: {{authors}}
+                Research Field: {{research_field}}
+                
+                Summary:';
+            """
+
+            project = self.server.projects.mindsdb
+            query = project.query(summary_model_query)
+            query.fetch()
+
+            console.print(
+                "[bold green]AI summarization model created successfully![/bold green]"
+            )
+            console.print("[dim]Paper summarization is now available.[/dim]")
+
+            return True
+        except Exception as e:
+            console.print(
+                f"[yellow]Warning: Could not create summarization model: {str(e)}[/yellow]"
+            )
+            console.print(
+                "[dim]Paper insertion will continue without AI summaries.[/dim]"
+            )
+            return False
+
+    def generate_paper_summary(self, paper: Paper) -> str:
+        """Generate AI summary for a research paper"""
+        try:
+            summary_query = f"""
+            SELECT summary
+            FROM paper_summarizer_model
+            WHERE abstract = '{paper.abstract.replace("'", "''")}'
+            AND title = '{paper.title.replace("'", "''")}'
+            AND authors = '{paper.authors.replace("'", "''")}'
+            AND research_field = '{paper.research_field.replace("'", "''")}';
+            """
+
+            result = self.server.query(summary_query)
+            results = result.fetch()
+
+            if results and len(results) > 0:
+                return results[0].get("summary", "")
+            else:
+                return ""
+
+        except Exception as e:
+            console.print(
+                f"[yellow]Warning: Could not generate summary for '{paper.title}': {str(e)}[/yellow]"
+            )
+            return ""
+
     def insert_papers(self, papers: List[Paper]):
         """Insert papers into the knowledge base"""
         if not papers:
@@ -195,9 +277,18 @@ class MindsDBManager:
                 )
 
                 for paper in papers:
+                    # Generate AI summary for the paper
+                    if not paper.summary:
+                        progress.update(task, description="Generating AI summary...")
+                        paper.summary = self.generate_paper_summary(paper)
+
+                    progress.update(
+                        task, description="Inserting paper into knowledge base..."
+                    )
+
                     insert_query = f"""
                     INSERT INTO research_papers_kb 
-                    (paper_id, title, authors, category, pub_date, arxiv_id, journal, research_field, paper_type, citation_count, abstract)
+                    (paper_id, title, authors, category, pub_date, arxiv_id, journal, research_field, paper_type, citation_count, abstract, summary)
                     VALUES (
                         '{paper.paper_id}',
                         '{paper.title.replace("'", "''")}',
@@ -209,7 +300,8 @@ class MindsDBManager:
                         '{paper.research_field}',
                         '{paper.paper_type}',
                         {paper.citation_count},
-                        '{paper.abstract.replace("'", "''")}'
+                        '{paper.abstract.replace("'", "''")}',
+                        '{paper.summary.replace("'", "''")}'
                     )
                     """
 
@@ -219,7 +311,7 @@ class MindsDBManager:
             success_panel = Panel(
                 f"[bold green]Papers Inserted Successfully[/bold green]\n\n"
                 f"Successfully processed and inserted {len(papers)} research papers into the knowledge base.\n\n"
-                f"[dim]The papers are now available for search and analysis.[/dim]",
+                f"[dim]The papers are now available for search and analysis with AI-generated summaries.[/dim]",
                 title="Operation Complete",
                 border_style="green",
                 padding=(1, 2),
@@ -273,6 +365,7 @@ class MindsDBManager:
             # Add metadata filters
             for key, value in filters.items():
                 if key in [
+                    "paper_id",
                     "title",
                     "authors",
                     "category",
@@ -288,7 +381,7 @@ class MindsDBManager:
             where_clause = " AND ".join(where_conditions)
 
             search_query = f"""
-            SELECT * 
+            SELECT *
             FROM research_papers_kb 
             WHERE {where_clause}
             ORDER BY relevance DESC
@@ -396,6 +489,7 @@ class MindsDBManager:
         table.add_column("Authors", style="cyan", width=25)
         table.add_column("Field", style="yellow", width=20)
         table.add_column("Category", style="blue", width=10)
+        table.add_column("Summary", style="dim", width=8)
 
         for result in results:
             metadata = result.get("metadata", {})
@@ -412,6 +506,7 @@ class MindsDBManager:
             authors = metadata.get("authors", "N/A")
             research_field = metadata.get("research_field", "N/A")
             category = metadata.get("category", "N/A")
+            summary = metadata.get("summary", "")
 
             # Truncate long text for table display
             title = (title[:37] + "...") if len(title) > 40 else title
@@ -422,9 +517,82 @@ class MindsDBManager:
                 else research_field
             )
 
-            table.add_row(f"{relevance:.3f}", title, authors, research_field, category)
+            # Show summary indicator
+            summary_indicator = "📝" if summary else "❌"
+
+            table.add_row(
+                f"{relevance:.3f}",
+                title,
+                authors,
+                research_field,
+                category,
+                summary_indicator,
+            )
 
         console.print(table)
+
+    def display_paper_summary(self, paper_id: str):
+        """Display detailed paper information including AI-generated summary"""
+        try:
+            detail_query = f"""
+            SELECT *
+            FROM research_papers_kb
+            WHERE paper_id = '{paper_id}'
+            """
+
+            result = self.server.query(detail_query)
+            results = result.fetch()
+
+            if not results:
+                console.print(
+                    f"[yellow]❌ Paper with ID '{paper_id}' not found[/yellow]"
+                )
+                return
+
+            paper_data = results[0]
+            metadata = paper_data.get("metadata", {})
+
+            if isinstance(metadata, str):
+                import json
+
+                try:
+                    metadata = json.loads(metadata)
+                except:
+                    metadata = {}
+
+            # Display paper details
+            console.print(f"\n[bold cyan]📄 Paper Details[/bold cyan]")
+            console.print(f"[bold]Title:[/bold] {metadata.get('title', 'N/A')}")
+            console.print(f"[bold]Authors:[/bold] {metadata.get('authors', 'N/A')}")
+            console.print(f"[bold]Category:[/bold] {metadata.get('category', 'N/A')}")
+            console.print(
+                f"[bold]Research Field:[/bold] {metadata.get('research_field', 'N/A')}"
+            )
+            console.print(
+                f"[bold]Publication Date:[/bold] {metadata.get('pub_date', 'N/A')}"
+            )
+            console.print(f"[bold]Journal:[/bold] {metadata.get('journal', 'N/A')}")
+            console.print(
+                f"[bold]Citation Count:[/bold] {metadata.get('citation_count', 'N/A')}"
+            )
+
+            # Display abstract
+            console.print(f"\n[bold]Abstract:[/bold]")
+            abstract = metadata.get("abstract", "N/A")
+            console.print(f"[dim]{abstract}[/dim]")
+
+            # Display AI-generated summary
+            console.print(f"\n[bold green]🤖 AI-Generated Summary:[/bold green]")
+            summary = metadata.get("summary", "")
+            if summary:
+                console.print(f"[green]{summary}[/green]")
+            else:
+                console.print(
+                    f"[yellow]No AI summary available for this paper.[/yellow]"
+                )
+
+        except Exception as e:
+            console.print(f"[red]Error fetching paper details: {str(e)}[/red]")
 
     def get_paper_details(self, paper_id: str) -> Optional[Dict[str, Any]]:
         """Get detailed information about a specific paper"""
