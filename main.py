@@ -6,9 +6,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt, IntPrompt, Confirm, FloatPrompt
 from rich.text import Text
-from rich.live import Live
-from rich.layout import Layout
-from rich.align import Align
+from rich.table import Table
 import json
 
 from src.mindsdb_manager import MindsDBManager
@@ -50,7 +48,7 @@ class ScholarMapCLI:
         """Get next action from user with minimal interface"""
         if context == "main":
             self.console.print("\n[bold cyan]Quick Actions:[/bold cyan]")
-            prompt_text = "[bold]Action[/bold] ([dim]i[/dim]nsert, [dim]s[/dim]earch, [dim]a[/dim]i, [dim]d[/dim]emo, [dim]j[/dim]ob, [dim]q[/dim]uit)"
+            prompt_text = "[bold]Action[/bold] ([dim]i[/dim]nsert, [dim]s[/dim]earch, [dim]a[/dim]i, [dim]ag[/dim]ent, [dim]d[/dim]emo, [dim]j[/dim]ob, [dim]q[/dim]uit)"
             choices = [
                 "i",
                 "insert",
@@ -58,6 +56,8 @@ class ScholarMapCLI:
                 "search",
                 "a",
                 "ai",
+                "ag",
+                "agent",
                 "d",
                 "demo",
                 "j",
@@ -102,6 +102,20 @@ class ScholarMapCLI:
         elif context == "ai":
             prompt_text = "[bold]AI Features[/bold] ([dim]s[/dim]ummary, [dim]g[/dim]enerate, [dim]b[/dim]ack)"
             choices = ["s", "summary", "g", "generate", "b", "back"]
+        elif context == "agent":
+            prompt_text = "[bold]Agent[/bold] ([dim]c[/dim]hat, [dim]l[/dim]ist, [dim]d[/dim]elete, [dim]r[/dim]ecreate, [dim]b[/dim]ack)"
+            choices = [
+                "c",
+                "chat",
+                "l",
+                "list",
+                "d",
+                "delete",
+                "r",
+                "recreate",
+                "b",
+                "back",
+            ]
         elif context == "job":
             prompt_text = "[bold]Job Action[/bold] ([dim]c[/dim]reate, [dim]d[/dim]elete, [dim]s[/dim]tatus, [dim]b[/dim]ack)"
             choices = ["c", "create", "d", "delete", "s", "status", "b", "back"]
@@ -519,6 +533,158 @@ class ScholarMapCLI:
             elif action in ["b", "back"]:
                 break
 
+    def handle_agent_features(self):
+        """Handle agent-related features"""
+        self.current_context = "agent"
+
+        while True:
+            action = self.get_quick_action("agent")
+
+            if action in ["c", "chat"]:
+                self.chat_with_agent()
+            elif action in ["l", "list"]:
+                self.list_agents()
+            elif action in ["d", "delete"]:
+                self.delete_agent()
+            elif action in ["r", "recreate"]:
+                self.recreate_agent()
+            elif action in ["b", "back"]:
+                break
+
+    def chat_with_agent(self):
+        """Interactive chat with the research papers agent"""
+        self.console.print("\n[bold cyan]🤖 Research Papers Agent Chat[/bold cyan]")
+        self.console.print(
+            "[dim]Ask questions about research papers, trends, authors, or topics.[/dim]"
+        )
+        self.console.print("[dim]Type 'quit' to exit the chat.[/dim]\n")
+
+        while True:
+            try:
+                question = Prompt.ask("💭 [bold]Your question[/bold]")
+
+                if question.lower() in ["quit", "exit", "q"]:
+                    break
+
+                if not question.strip():
+                    continue
+
+                self.console.print("\n[dim]🤖 Agent is thinking...[/dim]")
+
+                # Query the agent
+                answer = self.manager.query_agent(question)
+
+                # Display the answer in a formatted panel
+                answer_panel = Panel(
+                    answer,
+                    title="🤖 Agent Response",
+                    border_style="green",
+                    padding=(1, 2),
+                    width=80,
+                )
+                self.console.print(answer_panel)
+                self.console.print()
+
+            except KeyboardInterrupt:
+                self.console.print("\n[yellow]Chat interrupted[/yellow]")
+                break
+            except Exception as e:
+                self.console.print(f"[red]Error: {str(e)}[/red]")
+
+    def list_agents(self):
+        """List all available agents"""
+        self.console.print("\n[bold cyan]📋 Available Agents[/bold cyan]")
+
+        try:
+            agents = self.manager.list_agents()
+
+            if not agents:
+                self.console.print("[yellow]No agents found.[/yellow]")
+                return
+
+            table = Table(show_header=True, header_style="bold magenta")
+            table.add_column("Name", style="cyan", width=30)
+            table.add_column("Model", style="green", width=20)
+            table.add_column("Status", style="yellow", width=15)
+
+            for agent in agents:
+                name = agent.get("name", "N/A")
+                model = agent.get("model", "N/A")
+                status = agent.get("status", "N/A")
+
+                table.add_row(name, model, status)
+
+            self.console.print(table)
+
+        except Exception as e:
+            self.console.print(f"[red]Error listing agents: {str(e)}[/red]")
+
+    def delete_agent(self):
+        """Delete an agent"""
+        self.console.print("\n[bold cyan]🗑️ Delete Agent[/bold cyan]")
+
+        try:
+            agents = self.manager.list_agents()
+
+            if not agents:
+                self.console.print("[yellow]No agents found to delete.[/yellow]")
+                return
+
+            # Show available agents
+            self.console.print("[bold]Available agents:[/bold]")
+            for i, agent in enumerate(agents, 1):
+                name = agent.get("name", "N/A")
+                self.console.print(f"{i}. {name}")
+
+            # Let user select agent to delete
+            choice = IntPrompt.ask(
+                "📋 [bold]Select agent number to delete[/bold]", default=1
+            )
+
+            if 1 <= choice <= len(agents):
+                selected_agent = agents[choice - 1]
+                agent_name = selected_agent.get("name", "")
+
+                if Confirm.ask(f"Delete agent '{agent_name}'?", default=False):
+                    success = self.manager.delete_agent(agent_name)
+                    if success:
+                        self.console.print(
+                            f"[bold green]✅ Agent '{agent_name}' deleted successfully![/bold green]"
+                        )
+                    else:
+                        self.console.print(
+                            f"[red]❌ Failed to delete agent '{agent_name}'[/red]"
+                        )
+            else:
+                self.console.print("[red]❌ Invalid selection.[/red]")
+
+        except Exception as e:
+            self.console.print(f"[red]Error deleting agent: {str(e)}[/red]")
+
+    def recreate_agent(self):
+        """Recreate the research papers agent"""
+        self.console.print("\n[bold cyan]🔄 Recreate Research Papers Agent[/bold cyan]")
+
+        if Confirm.ask("Recreate the research papers agent?", default=False):
+            try:
+                # First try to delete existing agent
+                try:
+                    self.manager.delete_agent("research_papers_agent")
+                except:
+                    pass  # Agent might not exist
+
+                # Create new agent
+                success = self.manager.create_research_agent()
+                if success:
+                    self.console.print(
+                        "[bold green]✅ Research papers agent recreated successfully![/bold green]"
+                    )
+                else:
+                    self.console.print("[red]❌ Failed to recreate agent[/red]")
+
+            except Exception as e:
+                self.console.print(f"[red]Error recreating agent: {str(e)}[/red]")
+
     def view_paper_summary(self):
         """View AI-generated summary for a specific paper"""
         self.console.print("\n[bold cyan]🤖 View Paper Summary[/bold cyan]")
@@ -699,6 +865,8 @@ class ScholarMapCLI:
                     self.handle_search_papers()
                 elif action in ["a", "ai"]:
                     self.handle_ai_features()
+                elif action in ["ag", "agent"]:
+                    self.handle_agent_features()
                 elif action in ["d", "demo"]:
                     self.console.print(
                         "\n[bold cyan]🎯 Loading sample data...[/bold cyan]"

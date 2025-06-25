@@ -154,6 +154,9 @@ class MindsDBManager:
             # Create AI table for summarization
             self.create_summarization_model()
 
+            # Create research papers agent
+            self.create_research_agent()
+
             # TODO: Use a workaround for adding an index, current implementation gives a `RuntimeError: create_index not supported for VectorStoreHandler research_papers_kb_chromadb` error
             # add_index_query = """
             # CREATE INDEX ON KNOWLEDGE_BASE research_papers_kb;
@@ -227,6 +230,116 @@ class MindsDBManager:
             console.print(
                 "[dim]Paper insertion will continue without AI summaries.[/dim]"
             )
+            return False
+
+    def create_research_agent(self):
+        """Create an agent for interacting with research papers knowledge base"""
+        try:
+            console.print("[dim]Setting up research papers agent...[/dim]")
+
+            agent_query = f"""
+            CREATE AGENT research_papers_agent
+            USING
+                model = 'gpt-4o',
+                openai_api_key = '{OPENAI_API_KEY}',
+                include_knowledge_bases = ['mindsdb.research_papers_kb'],
+                prompt_template = '
+                    You are a research assistant agent with access to a comprehensive knowledge base of research papers.
+                    
+                    The research_papers_kb knowledge base contains:
+                    - Paper titles, authors, and abstracts
+                    - Research fields and categories
+                    - Publication dates and journal information
+                    - Citation counts and paper types
+                    - AI-generated summaries of papers
+                    
+                    Your capabilities include:
+                    - Finding relevant papers based on research topics, authors, or keywords
+                    - Analyzing trends in research fields
+                    - Comparing papers and identifying connections
+                    - Providing insights about research directions
+                    - Summarizing findings from multiple papers
+                    
+                    When answering questions:
+                    1. Search the knowledge base for relevant information
+                    2. Provide specific paper references when possible
+                    3. Include paper titles, authors, and key findings
+                    4. Suggest related research areas or papers
+                    5. Be concise but comprehensive in your responses
+                    
+                    Always cite specific papers when making claims or providing information.
+                ';
+            """
+
+            project = self.server.projects.mindsdb
+            query = project.query(agent_query)
+            query.fetch()
+
+            console.print(
+                "[bold green]Research papers agent created successfully![/bold green]"
+            )
+            console.print(
+                "[dim]You can now ask questions about research papers using natural language.[/dim]"
+            )
+
+            return True
+        except Exception as e:
+            console.print(
+                f"[yellow]Warning: Could not create research agent: {str(e)}[/yellow]"
+            )
+            console.print("[dim]Agent functionality will not be available.[/dim]")
+            return False
+
+    def query_agent(self, question: str) -> str:
+        """Query the research papers agent with a question"""
+        try:
+            agent_query = f"""
+            SELECT answer
+            FROM research_papers_agent
+            WHERE question = '{question.replace("'", "''")}';
+            """
+
+            result = self.server.query(agent_query)
+            results = result.fetch()
+
+            if results and len(results) > 0:
+                return results[0].get("answer", "")
+            else:
+                return "I couldn't find an answer to your question. Please try rephrasing it."
+
+        except Exception as e:
+            console.print(f"[red]Error querying agent: {str(e)}[/red]")
+            return f"Sorry, I encountered an error while processing your question: {str(e)}"
+
+    def list_agents(self) -> List[Dict[str, Any]]:
+        """List all available agents"""
+        try:
+            list_query = """
+            SHOW AGENTS;
+            """
+
+            result = self.server.query(list_query)
+            return result.fetch()
+
+        except Exception as e:
+            console.print(f"[red]Error listing agents: {str(e)}[/red]")
+            return []
+
+    def delete_agent(self, agent_name: str) -> bool:
+        """Delete an agent"""
+        try:
+            delete_query = f"""
+            DROP AGENT {agent_name};
+            """
+
+            self.server.query(delete_query)
+            console.print(
+                f"[bold green]Agent '{agent_name}' deleted successfully![/bold green]"
+            )
+            return True
+
+        except Exception as e:
+            console.print(f"[red]Error deleting agent: {str(e)}[/red]")
             return False
 
     def generate_paper_summary(self, paper: Paper) -> str:
