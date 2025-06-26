@@ -842,6 +842,45 @@ class ScholarMapCLI:
         except Exception as e:
             self.console.print(f"[red]❌ Error generating summary: {str(e)}[/red]")
 
+    def handle_evaluate_knowledge_base(self):
+        """Handle evaluation of the knowledge base via CLI"""
+        self.console.print("\n[bold cyan]🧪 Evaluate Knowledge Base[/bold cyan]")
+        try:
+            kb_name = Prompt.ask("Knowledge base name", default="research_papers_kb")
+            test_table = Prompt.ask("Test table (e.g. my_datasource.my_test_table)")
+            version = Prompt.ask("Version column or value", default="doc_id")
+            from_sql = Prompt.ask(
+                "SQL to generate data (from_sql)",
+                default="SELECT content FROM my_datasource.my_table",
+            )
+            count = IntPrompt.ask("Number of rows to generate (count)", default=100)
+            evaluate = Confirm.ask("Run evaluation (True/False)?", default=False)
+            llm_provider = Prompt.ask("LLM provider", default="openai")
+            llm_api_key = Prompt.ask(
+                "LLM API key",
+                default=OPENAI_API_KEY if "OPENAI_API_KEY" in globals() else "",
+            )
+            llm_model_name = Prompt.ask("LLM model name", default="gpt-4o")
+            save_to = Prompt.ask(
+                "Save results to table (e.g. my_datasource.my_result_table)"
+            )
+
+            result = self.manager.evaluate_knowledge_base(
+                kb_name=kb_name,
+                test_table=test_table,
+                version=version,
+                generate_data={"from_sql": from_sql, "count": count},
+                evaluate=evaluate,
+                llm_provider=llm_provider,
+                llm_api_key=llm_api_key,
+                llm_model_name=llm_model_name,
+                save_to=save_to,
+            )
+            self.console.print("[bold green]Evaluation results:[/bold green]")
+            self.console.print(result)
+        except Exception as e:
+            self.console.print(f"[red]Error during evaluation: {str(e)}[/red]")
+
     def run(self):
         """Main application loop with improved UX"""
         try:
@@ -877,9 +916,11 @@ class ScholarMapCLI:
                         self.console.print(f"[red]❌ Error: {str(e)}[/red]")
                 elif action in ["j", "job"]:
                     self.handle_job_management()
+                elif action in ["eval", "evaluate"]:
+                    self.handle_evaluate_knowledge_base()
                 elif action in ["q", "quit"]:
                     self.console.print(
-                        "\n[bold green]👋 Thank you for using Scholar Map![/bold green]"
+                        "\n[bold green]👋 Thank you for using Scholar Map![bold green]"
                     )
                     break
 

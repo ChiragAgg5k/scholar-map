@@ -724,3 +724,59 @@ class MindsDBManager:
         except Exception as e:
             console.print(f"[red]Error fetching paper details: {str(e)}[/red]")
             return None
+
+    def evaluate_knowledge_base(
+        self,
+        kb_name: str,
+        test_table: str,
+        version: str,
+        generate_data: dict,
+        evaluate: bool,
+        llm_provider: str,
+        llm_api_key: str,
+        llm_model_name: str,
+        save_to: str,
+    ):
+        """
+        Evaluate the relevancy and accuracy of the knowledge base using EVALUATE KNOWLEDGE_BASE.
+
+        Args:
+            kb_name: Name of the knowledge base to evaluate.
+            test_table: The test table to use for evaluation.
+            version: The version column or value.
+            generate_data: Dict with keys 'from_sql' and 'count' for data generation.
+            evaluate: Whether to run evaluation (bool).
+            llm_provider: LLM provider (e.g., 'openai').
+            llm_api_key: API key for the LLM.
+            llm_model_name: Model name for the LLM.
+            save_to: Table to save results to.
+        """
+        try:
+            eval_query = f"""
+            EVALUATE KNOWLEDGE_BASE {kb_name}
+            USING
+                test_table = {test_table},
+                version = '{version}',
+                generate_data = {{
+                    'from_sql': '{generate_data['from_sql']}',
+                    'count': {generate_data['count']}
+                }},
+                evaluate = {str(evaluate).lower()},
+                llm = {{
+                    'provider': '{llm_provider}',
+                    'api_key':'{llm_api_key}',
+                    'model_name':'{llm_model_name}'
+                }},
+                save_to = {save_to};
+            """
+            project = self.server.projects.mindsdb
+            query = project.query(eval_query)
+            result = query.fetch()
+            console.print(
+                "[bold green]Knowledge base evaluation completed![/bold green]"
+            )
+            console.print(result)
+            return result
+        except Exception as e:
+            console.print(f"[red]Error evaluating knowledge base: {str(e)}[/red]")
+            return None
