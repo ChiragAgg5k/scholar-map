@@ -8,6 +8,7 @@ from rich.prompt import Prompt, IntPrompt, Confirm, FloatPrompt
 from rich.text import Text
 from rich.table import Table
 import json
+import os
 
 from src.mindsdb_manager import MindsDBManager
 from src.models.paper import Paper
@@ -858,7 +859,7 @@ class ScholarMapCLI:
             llm_provider = Prompt.ask("LLM provider", default="openai")
             llm_api_key = Prompt.ask(
                 "LLM API key",
-                default=OPENAI_API_KEY if "OPENAI_API_KEY" in globals() else "",
+                default=os.environ.get("OPENAI_API_KEY", ""),
             )
             llm_model_name = Prompt.ask("LLM model name", default="gpt-4o")
             save_to = Prompt.ask(
